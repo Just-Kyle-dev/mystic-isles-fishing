@@ -18,7 +18,7 @@ html, body {
   overflow: hidden; background: #1aa9c4;
 }
 #game { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; }
-#game canvas { display: block; image-rendering: pixelated; }
+#game canvas { display: block; image-rendering: pixelated; filter: saturate(1.15) contrast(1.05); }
 
 /* cahaya matahari + vignette lembut di atas game, di bawah HUD */
 #fx {

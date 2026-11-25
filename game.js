@@ -132,6 +132,27 @@ function ell(g, cx, cy, rx, ry, col, S) {
   }
 }
 
+/* kontur gelap 1 piksel di sekeliling sprite (ala pixel art game komersial) */
+function outlined(d, col, p) {
+  p = p || 2;
+  var c = d.canvas, w = c.width, h = c.height;
+  var tm = mkCanvas(w, h), tg = tm[1];
+  tg.drawImage(c, 0, 0); tg.globalCompositeOperation = 'source-in'; tg.fillStyle = col; tg.fillRect(0, 0, w, h);
+  var o = mkCanvas(w + 2 * p, h + 2 * p), og = o[1];
+  [[-p, 0], [p, 0], [0, -p], [0, p]].forEach(function (k) { og.drawImage(tm[0], p + k[0], p + k[1]); });
+  og.drawImage(c, p, p);
+  return { canvas: o[0], ox: (d.ox * w + p) / (w + 2 * p), oy: (d.oy * h + p) / (h + 2 * p) };
+}
+function outlineSheet(c, col) {                      // per sel: atas, kiri, kanan (bawah dibiarkan)
+  var tm = mkCanvas(c.width, c.height), tg = tm[1];
+  tg.drawImage(c, 0, 0); tg.globalCompositeOperation = 'source-in'; tg.fillStyle = col; tg.fillRect(0, 0, c.width, c.height);
+  var g = c.getContext('2d');
+  g.globalCompositeOperation = 'destination-over';
+  [[-2, 0], [2, 0], [0, -2]].forEach(function (k) { g.drawImage(tm[0], k[0], k[1]); });
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
 /* =====================================================================
    A2. PETA PULAU
    ===================================================================== */
@@ -170,10 +191,11 @@ function buildMap() {
   for (i = 0; i < GRID * GRID; i++) if (isLand(T[i]) && !seen[i]) T[i] = WATER;
 
   // 3) dermaga kayu (2 tile lebar) menjorok ke laut ke arah +i
-  var dockEnd = 0;
+  var dockEnd = 0, dockStart = GRID;
   [C - 1, C].forEach(function (dj) {
     var s = C;
     while (s < GRID - 1 && at(s, dj) !== WATER) s++;
+    dockStart = Math.min(dockStart, s);
     var e = Math.min(s + 6, GRID - 3);
     for (var di = s; di <= e; di++) T[dj * GRID + di] = DOCK;
     if (e > dockEnd) dockEnd = e;
@@ -234,8 +256,54 @@ function buildMap() {
     return at(ci + 1, cj) === WATER || at(ci - 1, cj) === WATER || at(ci, cj + 1) === WATER || at(ci, cj - 1) === WATER;
   }
   place('palm', 12, function (ci, cj) { var d = dist(ci, cj); return d > 4.5 && d < 10.8; }, 2.6);
-  place('bush', 8, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
+  place('tree', 5, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.6);
+  place('bush', 7, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
   place('rock', 8, function (ci, cj) { return nearWater(ci, cj) || dist(ci, cj) > 7.6; }, 2.3);
+
+  function addProp(kind, ci, cj) {
+    var tt = at(ci, cj);
+    if (tt !== GRASS && tt !== SAND) return;
+    for (var o = 0; o < obstacles.length; o++) if (obstacles[o].i === ci && obstacles[o].j === cj) return;
+    if (ci === stall.i && cj === stall.j) return;
+    obstacles.push({ kind: kind, gx: ci + 0.5, gy: cj + 0.5, i: ci, j: cj, v: 0 });
+  }
+  addProp('sign', dockStart - 2, C - 2); addProp('lamp', dockStart - 2, C + 1);
+  addProp('lamp', stall.i + 3, stall.j + 2); addProp('lamp', stall.i - 1, stall.j - 2);
+
+  // dekor tanpa tabrakan: alang-alang di tepi air, teratai, bayangan ikan
+  var R2 = rng(777), decor = [], fishC = [], cand2 = [];
+  for (j = 0; j < GRID; j++) for (i = 0; i < GRID; i++) if (T[j * GRID + i] === SAND || T[j * GRID + i] === GRASS) cand2.push([i, j]);
+  for (i = cand2.length - 1; i > 0; i--) { j = Math.floor(R2() * (i + 1)); var t2 = cand2[i]; cand2[i] = cand2[j]; cand2[j] = t2; }
+  function farFrom(list, x, y, d) { for (var q = 0; q < list.length; q++) if (Math.hypot(list[q].gx - x, list[q].gy - y) < d) return false; return true; }
+  for (var q = 0; q < cand2.length && decor.length < 18; q++) {
+    var ri = cand2[q][0], rj = cand2[q][1];
+    if (!nearWater(ri, rj) || (ri >= C + 4 && Math.abs(rj - C) <= 4)) continue;
+    var rx = ri + 0.3 + R2() * 0.4, ry = rj + 0.3 + R2() * 0.4;
+    if (!farFrom(decor, rx, ry, 2.2)) continue;
+    var blocked = false;
+    for (var oo = 0; oo < obstacles.length; oo++) if (obstacles[oo].i === ri && obstacles[oo].j === rj) blocked = true;
+    if (!blocked) decor.push({ kind: 'reed', gx: rx, gy: ry });
+  }
+  var pads = 0;
+  for (var tries = 0; tries < 900 && pads < 20; tries++) {
+    var pi = 1 + Math.floor(R2() * (GRID - 2)), pj = 1 + Math.floor(R2() * (GRID - 2));
+    if (at(pi, pj) !== WATER || at(pi + 1, pj) !== WATER || at(pi, pj + 1) !== WATER || at(pi + 1, pj + 1) !== WATER) continue;
+    var nearL = false;
+    for (var a1 = -2; a1 <= 1 && !nearL; a1++) for (var b1 = -2; b1 <= 1; b1++) if (isLand(at(pi + a1, pj + b1))) { nearL = true; break; }
+    if (!nearL) continue;
+    var px0 = pi + 0.3 + R2() * 0.4, py0 = pj + 0.3 + R2() * 0.4, okp = true;
+    for (var sp = 0; sp < spots.length; sp++) if (Math.hypot(px0 - spots[sp].gx, py0 - spots[sp].gy) < 2.2) okp = false;
+    if (!okp || !farFrom(decor, px0, py0, 1.5)) continue;
+    decor.push({ kind: 'pad', gx: px0, gy: py0, f: R2() < 0.4 ? 1 : 0 }); pads++;
+  }
+  spots.forEach(function (sp2) { fishC.push({ gx: sp2.gx, gy: sp2.gy, r: 30, n: 2 }); });
+  for (tries = 0; tries < 400 && fishC.length < 9; tries++) {
+    var fi = 1 + Math.floor(R2() * (GRID - 2)), fj = 1 + Math.floor(R2() * (GRID - 2)), okf = true;
+    for (var a2 = -1; a2 <= 1; a2++) for (var b2 = -1; b2 <= 1; b2++) if (at(fi + a2, fj + b2) !== WATER) okf = false;
+    var nl2 = false;
+    for (a2 = -4; a2 <= 4 && !nl2; a2++) for (b2 = -4; b2 <= 4; b2++) if (isLand(at(fi + a2, fj + b2))) { nl2 = true; break; }
+    if (okf && nl2) fishC.push({ gx: fi + 0.5, gy: fj + 0.5, r: 26, n: 1 });
+  }
 
   // 7) peta bisa-dilalui
   var WALK = new Uint8Array(GRID * GRID);
@@ -244,7 +312,7 @@ function buildMap() {
   WALK[stall.j * GRID + stall.i] = 0;
   WALK[Math.floor(npc.gy) * GRID + Math.floor(npc.gx)] = 0;
 
-  return { T: T, WALK: WALK, obstacles: obstacles, spots: spots, spawn: spawn, stall: stall, npc: npc, dockEnd: dockEnd };
+  return { T: T, WALK: WALK, obstacles: obstacles, spots: spots, spawn: spawn, stall: stall, npc: npc, dockEnd: dockEnd, dockStart: dockStart, decor: decor, fishC: fishC };
 }
 
 /* =====================================================================
@@ -261,6 +329,15 @@ function rowHW(y) { return y < 16 ? 2 * y + 2 : 2 * (31 - y) + 2; }
 
 function makeGround(map) {
   var T = map.T;
+  var plx = map.stall.i + 1, ply = map.stall.j + 0.5;
+  function segD(px_, py_, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((px_ - ax) * dx + (py_ - ay) * dy) / l2));
+    return Math.hypot(px_ - (ax + dx * u), py_ - (ay + dy * u));
+  }
+  function onPath(a, b) {
+    var x = a + 0.5, y = b + 0.5;
+    return Math.hypot(x - plx, y - ply) < 2.6 || segD(x, y, plx, ply, C + 0.5, C + 0.5) < 0.8 || segD(x, y, C + 0.5, C + 0.5, map.dockStart - 0.5, C + 0.5) < 0.8;
+  }
   var cv = mkCanvas(W, H), c = cv[0], g = cv[1];
   var i, j;
   function at(a, b) { return (a < 0 || b < 0 || a >= GRID || b >= GRID) ? WATER : T[b * GRID + a]; }
@@ -311,6 +388,7 @@ function makeGround(map) {
         for (k = 0; k < 32; k++) {
           var yy = top + 31 - (k >> 1);
           px(g, cx + k, yy, 1, h + 1, sideR);
+          px(g, cx + k, yy, 1, 1, t === GRASS ? '#3f9a35' : '#fff2c9');                  // bibir tebing
           if (k % 7 === 2) px(g, cx + k, yy + h, 3, 1, 'rgba(255,255,255,0.85)');       // buih
         }
       }
@@ -318,6 +396,7 @@ function makeGround(map) {
         for (k = 0; k < 32; k++) {
           var yl = top + 31 - (k >> 1);
           px(g, cx - 1 - k, yl, 1, h + 1, sideL);
+          px(g, cx - 1 - k, yl, 1, 1, t === GRASS ? '#2f7f2c' : '#f3e2b0');
           if (k % 7 === 4) px(g, cx - 3 - k, yl + h, 3, 1, 'rgba(255,255,255,0.7)');
         }
       }
@@ -334,7 +413,17 @@ function makeGround(map) {
         if (t === GRASS) base = grassCols[Math.min(3, Math.floor(pv * 4))];
         else if (!wet) base = sandCols[Math.min(3, Math.floor(pv * 4))];
       }
-      drawDiamond(g, cx, top, base);
+      var cob = (t === GRASS && onPath(i, j));
+      drawDiamond(g, cx, top, cob ? '#b3ae9d' : base);
+      if (cob) {                                          // jalan batu
+        for (var rr3 = 2; rr3 < 29; rr3 += 4) {
+          var hwr = Math.min(rowHW(rr3), rowHW(rr3 + 2)) - 3, off = ((rr3 >> 2) & 1) * 4 + Math.floor(hash(i, j, rr3) * 3);
+          for (var xx3 = -hwr + off; xx3 + 6 <= hwr; xx3 += 8) {
+            px(g, cx + xx3, top + rr3, 6, 3, hash(i + xx3, j, rr3) < 0.5 ? '#dcd7c7' : '#cfcab9');
+            px(g, cx + xx3, top + rr3, 6, 1, '#f1eddf'); px(g, cx + xx3, top + rr3 + 2, 6, 1, '#a39e8c');
+          }
+        }
+      }
 
       if (t === DOCK) {
         // papan kayu searah sumbu i
@@ -346,7 +435,7 @@ function makeGround(map) {
           var r2 = 2 + Math.floor(hash(i, j, q) * 27), hw2 = rowHW(r2);
           px(g, cx - hw2 + 2 + Math.floor(hash(i, j, q + 9) * (hw2 * 2 - 6)), top + r2, 2, 1, cols[1]);
         }
-      } else {
+      } else if (!cob) {
         for (var n = 0; n < 9; n++) {
           var rr = 2 + Math.floor(hash(i, j, n) * 27), hw = rowHW(rr);
           var xx = cx - hw + 2 + Math.floor(hash(i, j, n + 20) * (hw * 2 - 6));
@@ -449,7 +538,7 @@ function drawChar(g, ox, oy, o) {
     }
     R(2, 10 + by + al, 2, 2, p.shirt); R(2, 12 + by + al, 2, 3, p.skin);
     R(12, 10 + by - al, 2, 2, p.shirt); R(12, 12 + by - al, 2, 3, p.skin);
-    R(5, 3 + by, 6, 6, p.skin);
+    R(5, 3 + by, 6, 6, p.skin); R(5, 8 + by, 6, 1, '#d9a46d');
     if (v === 'front') {
       R(5, 4 + by, 1, 3, p.hair); R(10, 4 + by, 1, 3, p.hair);
       R(6 + sd, 6 + by, 1, 1, '#222'); R(9 + sd, 6 + by, 1, 1, '#222'); R(7 + sd, 8 + by, 2, 1, '#b5654a');
@@ -493,12 +582,12 @@ function makePlayerSheet() {
       by: walk ? [1, 0, 1, 0][ph] : col
     });
   }
-  return c;
+  return outlineSheet(c, '#14181f');
 }
 function makeNpcSheet() {
   var cv = mkCanvas(64, 48), c = cv[0], g = cv[1];
   for (var k = 0; k < 2; k++) drawChar(g, k * 32, 0, { pal: PAL_NPC, view: 'front', flip: false, side: 0, walk: false, phase: 0, by: k });
-  return c;
+  return outlineSheet(c, '#14181f');
 }
 
 /* ----- objek dunia ----- */
@@ -609,6 +698,66 @@ function makeFoam(map) {
     if (land(i - 1, j)) for (k = 0; k < 32; k++) { if ((k + i) % 9 < 6) px(g, cx - 32 + k, cy + 16 - (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
     if (land(i, j - 1)) for (k = 0; k < 32; k++) { if ((k + j) % 9 < 6) px(g, cx + k, cy + (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
   }
+  return c;
+}
+function makeTree() {
+  var S = 2, LW = 44, LH = 46, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], r = rng(31), k, a, d;
+  ell(g, 22, 42, 15, 3, 'rgba(0,0,0,0.22)', S);
+  px(g, 19 * S, 27 * S, 6 * S, 14 * S, '#7a4e24'); px(g, 19 * S, 27 * S, 2 * S, 14 * S, '#a06f3c'); px(g, 23 * S, 27 * S, 2 * S, 14 * S, '#5a3a1e');
+  px(g, 17 * S, 39 * S, 10 * S, 2 * S, '#6b4526');
+  [[14, 21, 10], [30, 21, 10], [22, 12, 11], [22, 22, 11], [22, 17, 13]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#256b31', S); });
+  ell(g, 22, 29, 13, 3, '#1b5a28', S);
+  [[13, 18, 8], [29, 18, 8], [21, 10, 9], [21, 19, 10]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#3ba246', S); });
+  [[11, 15, 4], [19, 7, 5], [26, 12, 4], [16, 12, 3], [30, 15, 3]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#68cd62', S); });
+  for (k = 0; k < 46; k++) { a = r() * 6.283; d = Math.sqrt(r()) * 14; px(g, Math.round(22 + Math.cos(a) * d) * S, Math.round(18 + Math.sin(a) * d * 0.95) * S, S, S, Math.sin(a) < 0 ? '#9be883' : '#1d5a2a'); }
+  for (k = 0; k < 11; k++) {
+    a = r() * 6.283; d = 4 + r() * 9; var fx = Math.round(22 + Math.cos(a) * d), fy = Math.round(18 + Math.sin(a) * d * 0.85);
+    px(g, fx * S, fy * S, 2 * S, 2 * S, r() < 0.5 ? '#ef7a1f' : '#e5392b'); px(g, fx * S, fy * S, S, S, '#ffd2a0');
+  }
+  return { canvas: c, ox: 0.5, oy: 41 / LH };
+}
+function makeLamp() {
+  var S = 2, LW = 14, LH = 40, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 7, 37, 6, 2, 'rgba(0,0,0,0.25)', S);
+  px(g, 4 * S, 34 * S, 6 * S, 3 * S, '#2b2f36'); px(g, 5 * S, 33 * S, 4 * S, S, '#59606b');
+  px(g, 6 * S, 11 * S, 2 * S, 23 * S, '#3b4048'); px(g, 6 * S, 11 * S, S, 23 * S, '#5d6470');
+  px(g, 3 * S, 3 * S, 8 * S, 2 * S, '#2b2f36'); px(g, 5 * S, 1 * S, 4 * S, 2 * S, '#2b2f36'); px(g, 6 * S, 0, 2 * S, S, '#59606b');
+  px(g, 4 * S, 5 * S, 6 * S, 6 * S, '#ffd95a'); px(g, 5 * S, 6 * S, 4 * S, 4 * S, '#fff7c9');
+  px(g, 3 * S, 5 * S, S, 6 * S, '#2b2f36'); px(g, 10 * S, 5 * S, S, 6 * S, '#2b2f36'); px(g, 3 * S, 11 * S, 8 * S, S, '#2b2f36');
+  return { canvas: c, ox: 0.5, oy: 37 / LH };
+}
+function makeSign() {
+  var S = 2, LW = 32, LH = 38, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 16, 35, 8, 2, 'rgba(0,0,0,0.25)', S);
+  px(g, 14 * S, 7 * S, 4 * S, 28 * S, '#7a4e24'); px(g, 14 * S, 7 * S, S, 28 * S, '#a06f3c'); px(g, 17 * S, 7 * S, S, 28 * S, '#5a3a1e');
+  px(g, 5 * S, 9 * S, 20 * S, 7 * S, '#d19b5d'); px(g, 25 * S, 10 * S, 2 * S, 5 * S, '#d19b5d'); px(g, 27 * S, 11 * S, S, 3 * S, '#d19b5d');
+  px(g, 5 * S, 9 * S, 20 * S, S, '#ecc388'); px(g, 5 * S, 15 * S, 20 * S, S, '#9a6a35');
+  px(g, 9 * S, 18 * S, 20 * S, 7 * S, '#bd8749'); px(g, 7 * S, 19 * S, 2 * S, 5 * S, '#bd8749'); px(g, 6 * S, 20 * S, S, 3 * S, '#bd8749');
+  px(g, 9 * S, 18 * S, 20 * S, S, '#dba765'); px(g, 9 * S, 24 * S, 20 * S, S, '#8a5c2d');
+  [[8, 12], [22, 12], [12, 21], [26, 21]].forEach(function (n) { px(g, n[0] * S, n[1] * S, S, S, '#4a3018'); });
+  return { canvas: c, ox: 0.5, oy: 35 / LH };
+}
+function makeReed() {
+  var S = 2, LW = 20, LH = 30, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 10, 27, 7, 2, 'rgba(0,0,0,0.18)', S);
+  [[5, 16, 0], [8, 22, 0], [11, 19, 1], [14, 14, 0], [10, 12, 0]].forEach(function (s_) {
+    var x = s_[0], h = s_[1];
+    px(g, x * S, (27 - h) * S, S, h * S, '#3f8a3a'); px(g, (x + 1) * S, (27 - h) * S + S * 2, S, (h - 2) * S, '#69bf58');
+    if (s_[2] !== undefined) { px(g, x * S - S, (27 - h) * S, 3 * S, 6 * S, '#6b3f1d'); px(g, x * S, (27 - h) * S, S, 6 * S, '#8f5a2c'); px(g, x * S, (26 - h) * S, S, S, '#c9a06a'); }
+  });
+  [[2, 24, -1], [16, 24, 1], [7, 25, -1], [12, 25, 1]].forEach(function (b) { px(g, b[0] * S, b[1] * S, S, 3 * S, '#4da545'); px(g, (b[0] + b[2]) * S, (b[1] - 2) * S, S, 2 * S, '#69bf58'); });
+  return { canvas: c, ox: 0.5, oy: 27 / LH };
+}
+function makePad(flower) {
+  var S = 2, LW = 18, LH = 10, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 9, 5, 7, 3, '#2c9444', S); ell(g, 9, 4, 6, 2, '#4cc05f', S); ell(g, 7, 4, 2, 1, '#8ee07a', S);
+  g.clearRect(10 * S, 5 * S, 7 * S, S);
+  if (flower) { px(g, 6 * S, 1 * S, 4 * S, 3 * S, '#ff86b0'); px(g, 7 * S, 0, 2 * S, S, '#ffb3cc'); px(g, 7 * S, 2 * S, 2 * S, S, '#fff3a0'); }
+  return { canvas: c, ox: 0.5, oy: 0.55 };
+}
+function makeFishShadow() {
+  var S = 2, cv = mkCanvas(44, 20), c = cv[0], g = cv[1];
+  ell(g, 9, 5, 8, 3, 'rgba(5,45,80,0.5)', S); px(g, 17 * S, 3 * S, 2 * S, 4 * S, 'rgba(5,45,80,0.5)'); px(g, 19 * S, 2 * S, 2 * S, 6 * S, 'rgba(5,45,80,0.5)');
   return c;
 }
 function makeSparkle() {
@@ -998,7 +1147,13 @@ function createSceneClass() {
       for (var d = 0; d < 8; d++) for (var c = 0; c < 6; c++) ps.add(d + '_' + c, 0, c * 32, d * 48, 32, 48);
       var ns = this.textures.addCanvas('npc', makeNpcSheet());
       ns.add('i0', 0, 0, 0, 32, 48); ns.add('i1', 0, 32, 0, 32, 48);
-      var defs = { palm: makePalm(), bush: makeBush(), rock0: makeRock(0), rock1: makeRock(1), stall: makeStall() };
+      var OL = '#0f2a2e', OLG = '#0c3320';
+      var defs = {
+        palm: outlined(makePalm(), OLG), bush: outlined(makeBush(), OLG), rock0: outlined(makeRock(0), OL), rock1: outlined(makeRock(1), OL),
+        stall: outlined(makeStall(), '#2a1408'), tree: outlined(makeTree(), OLG), lamp: outlined(makeLamp(), '#14161a'),
+        sign: outlined(makeSign(), '#2a1408'), reed: outlined(makeReed(), OLG), pad0: outlined(makePad(0), '#175a30'), pad1: outlined(makePad(1), '#175a30')
+      };
+      this.textures.addCanvas('fishsh', makeFishShadow());
       this.origins = {};
       Object.keys(defs).forEach(function (k) { self.textures.addCanvas(k, defs[k].canvas); self.origins[k] = [defs[k].ox, defs[k].oy]; });
       FISH.forEach(function (f) { self.textures.addCanvas('fish_' + f.id, makeFishCanvas(f)); });
@@ -1030,11 +1185,43 @@ function createSceneClass() {
       M.obstacles.forEach(function (o) {
         var key = o.kind === 'rock' ? 'rock' + o.v : o.kind;
         var p = self.gp(o.gx, o.gy, ELEV_LAND);
+        if (o.kind === 'tree') self.add.ellipse(p.x + 8, p.y, 62, 20, 0x0b3d14, 0.3).setDepth(-49);
+        if (o.kind === 'lamp') {
+          var glow = self.add.ellipse(p.x, p.y - 31, 46, 46, 0xffe28a, 0.2).setBlendMode(Phaser.BlendModes.ADD).setDepth(p.y + 1);
+          self.tweens.add({ targets: glow, alpha: { from: 0.12, to: 0.3 }, duration: 1400 + Math.random() * 600, yoyo: true, repeat: -1 });
+          self.add.ellipse(p.x, p.y, 70, 26, 0xffe28a, 0.1).setBlendMode(Phaser.BlendModes.ADD).setDepth(-48);
+        }
         if (o.kind === 'palm') self.add.ellipse(p.x + 12, p.y + 1, 54, 18, 0x0b3d14, 0.28).setDepth(-49);
         else if (o.kind === 'bush') self.add.ellipse(p.x + 2, p.y, 26, 9, 0x0b3d14, 0.25).setDepth(-49);
         var img = self.add.image(p.x, p.y, key).setOrigin(self.origins[key][0], self.origins[key][1]).setDepth(p.y);
         if (o.kind === 'palm') {
           self.tweens.add({ targets: img, angle: { from: -1.4, to: 1.4 }, duration: 2600 + Math.random() * 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: Math.random() * 1500 });
+        }
+      });
+
+      // dekor: alang-alang, teratai
+      (M.decor || []).forEach(function (d) {
+        if (d.kind === 'reed') {
+          var rp = self.gp(d.gx, d.gy, ELEV_LAND), rk = self.add.image(rp.x, rp.y, 'reed').setOrigin(self.origins.reed[0], self.origins.reed[1]).setDepth(rp.y);
+          self.tweens.add({ targets: rk, angle: { from: -2.5, to: 2.5 }, duration: 1800 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        } else {
+          var pk = 'pad' + d.f, ppx = (d.gx - d.gy) * 32 + W / 2, ppy = (d.gx + d.gy) * 16 + 16;
+          var pi2 = self.add.image(ppx, ppy, pk).setOrigin(self.origins[pk][0], self.origins[pk][1]).setDepth(-46);
+          self.tweens.add({ targets: pi2, y: ppy + 1.5, angle: { from: -3, to: 3 }, duration: 2200 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        }
+      });
+      // bayangan ikan berenang pelan di bawah air
+      (M.fishC || []).forEach(function (fc) {
+        var cx0 = (fc.gx - fc.gy) * 32 + W / 2, cy0 = (fc.gx + fc.gy) * 16 + 16;
+        for (var fk = 0; fk < fc.n; fk++) {
+          (function (ph, dir, rr, dur) {
+            var fsh = self.add.image(cx0, cy0, 'fishsh').setDepth(-47).setAlpha(0.6).setScale(0.8 + Math.random() * 0.5);
+            self.tweens.addCounter({ from: 0, to: 6.2832, duration: dur, repeat: -1, onUpdate: function (tw) {
+              var a = tw.getValue() * dir + ph;
+              fsh.setPosition(cx0 + Math.cos(a) * rr, cy0 + Math.sin(a) * rr * 0.48);
+              fsh.setRotation(Math.atan2(dir * Math.cos(a) * rr * 0.48, -dir * Math.sin(a) * rr));
+            } });
+          })(Math.random() * 6.28, fk % 2 ? -1 : 1, fc.r * (0.7 + Math.random() * 0.5), 9000 + Math.random() * 6000);
         }
       });
 
