@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06222c">
+<title>Tropical Fishing Adventure</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="stage">
+  <div id="game"></div>
+  <div id="fx"></div>
+
+  <div id="hud">
+    <div id="coinBox"><span class="coinIcon"></span><span id="coinText">0</span></div>
+
+    <button id="btnBag" class="hudbtn" type="button">INVENTORY <b id="bagCount">0</b></button>
+    <button id="btnFull" class="hudbtn sq" type="button" aria-label="Layar penuh">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+      </svg>
+    </button>
+
+    <div id="banner"></div>
+    <div id="biteBar"><i></i></div>
+    <div id="toast"></div>
+    <div id="spotLabel"></div>
+    <div id="hint"></div>
+
+    <div id="joyZone"></div>
+    <div id="joyBase"><div id="joyKnob"></div></div>
+
+    <button id="btnTalk" type="button">TOKO IKAN</button>
+    <button id="btnFish" type="button">LEMPAR</button>
+  </div>
+
+  <div id="modal" class="hidden">
+    <!-- INVENTORY -->
+    <div class="panel" id="panelInv" hidden>
+      <div class="ph"><h2>Inventory</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="pb">
+        <div id="invList" class="list"></div>
+        <div id="invDetail" class="detail"></div>
+      </div>
+      <div class="pf">
+        <span id="invSummary"></span>
+        <button id="btnReset" class="btn small danger" type="button">Reset Data</button>
+      </div>
+    </div>
+
+    <!-- TOKO -->
+    <div class="panel" id="panelShop" hidden>
+      <div class="ph"><h2>Toko Ikan - Pak Marlin</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="pb">
+        <div id="shopList" class="list"></div>
+        <div id="shopDetail" class="detail"></div>
+      </div>
+      <div class="pf">
+        <span id="shopSummary"></span>
+        <button id="btnSellAll" class="btn" type="button">Jual Semua Ikan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading">Memuat pulau...</div>
+</div>
+
+<div id="rotate"><div>Putar HP ke mode <b>landscape</b> untuk bermain</div></div>
+<div id="errbox"></div>
+
+<!-- Phaser 3: CDN utama, cadangan unpkg, lalu file lokal phaser.min.js (jika kamu menaruhnya di folder yang sama) -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
+<script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
+<script src="game.js"></script>
+</body>
+</html>
