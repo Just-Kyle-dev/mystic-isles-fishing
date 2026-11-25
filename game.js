@@ -24,7 +24,11 @@ var W = GRID * TW, H = GRID * TH + 24; // ukuran dunia (px)
 var ELEV_LAND = 8, ELEV_DOCK = 6;
 var WATER = 0, SAND = 1, GRASS = 2, DOCK = 3;
 var SPEED = 165;
-var CAM_ZOOM = 2;                      // 1 = jauh, 2 = dekat dengan karakter (ubah sesuai selera)                       // px layar / detik
+var CAM_ZOOM = 3;                      // 1 = jauh, 2 = dekat dengan karakter (ubah sesuai selera)                       // px layar / detik
+var REEL = {                            // gain = isi bar tiap tekan, decay = bar turun per detik (ikan melawan)
+  common: { gain: 0.13, decay: 0.14 }, uncommon: { gain: 0.11, decay: 0.18 }, rare: { gain: 0.09, decay: 0.22 },
+  epic: { gain: 0.08, decay: 0.26 }, legendary: { gain: 0.07, decay: 0.30 }
+};
 var SAVE_KEY = 'tropicalFishing.save.v1';
 
 var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -352,6 +356,21 @@ function makeGround(map) {
           var gr = 9 + Math.floor(hash(i, j, 78) * 12), gh = rowHW(gr), gx2 = cx + Math.floor((hash(i, j, 79) - 0.5) * gh);
           px(g, gx2, top + gr, 1, 1, '#2f8a34'); px(g, gx2 - 1, top + gr - 1, 1, 1, '#2f8a34'); px(g, gx2 + 1, top + gr - 1, 1, 1, '#2f8a34');
         }
+        if (t === GRASS) {                                     // rumput lebih rapat + bercak cahaya/bayangan
+          for (var tf = 0; tf < 4; tf++) if (hash(i, j, 200 + tf) < 0.7) {
+            var tr = 6 + Math.floor(hash(i, j, 210 + tf) * 17), th2 = rowHW(tr), tx2 = cx + Math.floor((hash(i, j, 220 + tf) - 0.5) * (th2 - 4));
+            var dark = hash(i, j, 230 + tf) < 0.5;
+            px(g, tx2, top + tr - 2, 1, 3, dark ? '#2f8a34' : '#8fe06a');
+            px(g, tx2 + 2, top + tr - 1, 1, 2, dark ? '#3b9a3c' : '#a6ee7c');
+            px(g, tx2 - 2, top + tr - 1, 1, 2, dark ? '#3b9a3c' : '#7fd35e');
+          }
+          if (hash(i, j, 240) < 0.35) { var dr = 8 + Math.floor(hash(i, j, 241) * 14); px(g, cx - 6 + Math.floor(hash(i, j, 242) * 10), top + dr, 5, 1, 'rgba(20,90,40,0.28)'); }
+          if (hash(i, j, 243) < 0.3) { var lr = 6 + Math.floor(hash(i, j, 244) * 14); px(g, cx - 8 + Math.floor(hash(i, j, 245) * 14), top + lr, 4, 1, 'rgba(220,255,160,0.25)'); }
+        }
+        if (t === SAND) {                                      // riak pasir + kerikil
+          if (hash(i, j, 250) < 0.5) { var rr2 = 8 + Math.floor(hash(i, j, 251) * 14); px(g, cx - 9 + Math.floor(hash(i, j, 252) * 12), top + rr2, 6, 1, 'rgba(190,160,100,0.45)'); px(g, cx - 7 + Math.floor(hash(i, j, 252) * 12), top + rr2 + 1, 3, 1, 'rgba(255,250,225,0.5)'); }
+          if (hash(i, j, 253) < 0.14) { var pr = 9 + Math.floor(hash(i, j, 254) * 12), pxx = cx - 8 + Math.floor(hash(i, j, 255) * 14); px(g, pxx, top + pr, 3, 2, '#a89c82'); px(g, pxx, top + pr, 2, 1, '#cfc4a8'); }
+        }
         if (t === GRASS && hash(i, j, 90) < 0.1) {             // bunga kecil
           var fr = 10 + Math.floor(hash(i, j, 91) * 10);
           px(g, cx + Math.floor((hash(i, j, 92) - 0.5) * 20), top + fr, 2, 2, hash(i, j, 93) < 0.5 ? '#ff7aa8' : '#ffe36a');
@@ -385,7 +404,7 @@ function makeGround(map) {
 }
 
 /* ----- karakter pixel art ----- */
-var PAL_PLAYER = { skin: '#f2c28b', hair: '#4a2f1b', shirt: '#ff6b3d', shirt2: '#ffd166', pants: '#2f6fb0', pantsD: '#25588c', shoe: '#3a2a1d', hat: 'straw' };
+var PAL_PLAYER = { skin: '#f2c28b', hair: '#17171b', hairHi: '#3d3e48', shirt: '#f6f7f9', shirt2: '#d5dbe3', pants: '#2a2c33', pantsD: '#18191e', shoe: '#0c0c0e', belt: '#0c0c0e', hat: 'none' };
 var PAL_NPC = { skin: '#c98a5a', hair: '#2e2e2e', shirt: '#1fb5a5', shirt2: '#e8fffb', pants: '#7a5230', pantsD: '#5f3f22', shoe: '#2a1d12', hat: 'cap', apron: true };
 
 function drawChar(g, ox, oy, o) {
@@ -409,6 +428,10 @@ function drawChar(g, ox, oy, o) {
     R(9, 6 + by, 1, 1, '#222'); R(11, 6 + by, 1, 1, p.skin); R(9, 8 + by, 2, 1, '#b5654a');
     if (p.hat === 'straw') {
       R(4, 3 + by, 10, 1, '#e9c46a'); R(5, 1 + by, 6, 2, '#f4d58d'); R(5, 2 + by, 6, 1, '#e76f51');
+    } else if (p.hat === 'none') {
+      R(4, 2 + by, 7, 2, p.hair); R(4, 4 + by, 4, 4, p.hair); R(9, 3 + by, 2, 1, p.hair);
+      R(5, 2 + by, 3, 1, p.hairHi);
+      if (p.belt) R(5, 15, 6, 1, p.belt);
     } else {
       R(5, 1 + by, 6, 3, '#d62828'); R(10, 3 + by, 4, 1, '#9d1c1c');
     }
@@ -435,6 +458,14 @@ function drawChar(g, ox, oy, o) {
     }
     if (p.hat === 'straw') {
       R(3 + sd, 3 + by, 10, 1, '#e9c46a'); R(5 + sd, 1 + by, 6, 2, '#f4d58d'); R(5 + sd, 2 + by, 6, 1, '#e76f51');
+    } else if (p.hat === 'none') {
+      if (v === 'front') {
+        R(4, 2 + by, 8, 3, p.hair); R(4, 5 + by, 1, 3, p.hair); R(11, 5 + by, 1, 3, p.hair);
+        R(6, 2 + by, 3, 1, p.hairHi); R(6, 9 + by, 4, 1, p.skin);
+      } else {
+        R(4, 2 + by, 8, 7, p.hair); R(6, 2 + by, 3, 1, p.hairHi); R(7, 5 + by, 2, 1, p.hairHi);
+      }
+      if (p.belt) R(4, 15, 8, 1, p.belt);
     } else if (v === 'front') {
       R(5, 1 + by, 6, 3, '#d62828'); R(5 + sd, 4 + by, 6, 1, '#9d1c1c');
     } else {
@@ -496,6 +527,14 @@ function makePalm() {
       px(g, lx * S, (ly + th) * S, S, S, greens[0]);
     }
   }
+  for (var k2 = 0; k2 < 5; k2++) {                         // daun lapis kedua (lebih rimbun)
+    var a2 = k2 * (Math.PI * 2 / 5) + 0.9, dx2 = Math.cos(a2), dy2 = Math.sin(a2);
+    for (var t2 = 2; t2 <= 11; t2 += 0.5) {
+      var lx2 = Math.round(cx + dx2 * t2 * 1.1), ly2 = Math.round(cy - 1 + dy2 * t2 * 0.3 + t2 * t2 * 0.06);
+      px(g, lx2 * S, ly2 * S, S, S, t2 > 8 ? greens[0] : greens[2]);
+    }
+  }
+  for (var y2 = top; y2 < bY; y2 += 3) px(g, Math.round(bx + 7 * Math.pow((bY - y2) / (bY - top), 2) + 2 * ((bY - y2) / (bY - top))) * S + S, y2 * S, S, S, '#c99a62');   // sorot batang
   px(g, (cx - 2) * S, (cy + 2) * S, 2 * S, 2 * S, '#5a3a1e');
   px(g, (cx + 1) * S, (cy + 3) * S, 2 * S, 2 * S, '#4a2f18');
   px(g, (cx - 1) * S, (cy + 4) * S, 2 * S, 2 * S, '#6b4526');
@@ -559,6 +598,17 @@ function makeCloud() {
     g.fillStyle = gr; g.save(); g.translate(b[0], b[1]); g.scale(1, b[3] / b[2]); g.translate(-b[0], -b[1]);
     g.beginPath(); g.arc(b[0], b[1], b[2], 0, 6.2832); g.fill(); g.restore();
   });
+  return c;
+}
+function makeFoam(map) {
+  var T = map.T, cv = mkCanvas(W, H), c = cv[0], g = cv[1];
+  function land(a, b) { return a >= 0 && b >= 0 && a < GRID && b < GRID && T[b * GRID + a] !== WATER; }
+  for (var j = 0; j < GRID; j++) for (var i = 0; i < GRID; i++) {
+    if (T[j * GRID + i] !== WATER) continue;
+    var cx = (i - j) * 32 + W / 2, cy = (i + j) * 16, k;
+    if (land(i - 1, j)) for (k = 0; k < 32; k++) { if ((k + i) % 9 < 6) px(g, cx - 32 + k, cy + 16 - (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
+    if (land(i, j - 1)) for (k = 0; k < 32; k++) { if ((k + j) % 9 < 6) px(g, cx + k, cy + (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
+  }
   return c;
 }
 function makeSparkle() {
@@ -654,6 +704,14 @@ var UI = {
     $('biteBar').className = cls === 'bite' ? 'show' : '';
   },
   setBite: function (frac) { $('biteBar').firstElementChild.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%'; },
+  setReel: function (on, frac) {
+    var b = $('reelBar');
+    if (this.cache.reel !== on) { this.cache.reel = on; b.className = on ? 'show' : ''; }
+    if (!on) return;
+    b.firstElementChild.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+    b.classList.toggle('low', frac < 0.3);
+    if (scene && scene.fish.kick > 0.9) { b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); }
+  },
   setSpot: function (text) {
     if (this.cache.spot === text) return;
     this.cache.spot = text;
@@ -933,6 +991,7 @@ function createSceneClass() {
       this.textures.addCanvas('waves2', makeWaves(2));
       this.textures.addCanvas('sparkle', makeSparkle());
       this.textures.addCanvas('cloud', makeCloud());
+      this.textures.addCanvas('foam', makeFoam(M));
       this.textures.addCanvas('bobber', makeBobber());
       this.textures.addCanvas('ground', makeGround(M));
       var ps = this.textures.addCanvas('player', makePlayerSheet());
@@ -948,6 +1007,12 @@ function createSceneClass() {
       this.waves1 = this.add.tileSprite(0, 0, W, H, 'waves1').setOrigin(0, 0).setDepth(-100);
       this.waves2 = this.add.tileSprite(0, 0, W, H, 'waves2').setOrigin(0, 0).setDepth(-99).setAlpha(0.6);
       this.add.image(0, 0, 'ground').setOrigin(0, 0).setDepth(-50);
+
+      // buih ombak di tepi pantai (dua lapis, bergantian maju-mundur)
+      var foamA = this.add.image(0, 0, 'foam').setOrigin(0, 0).setDepth(-49);
+      var foamB = this.add.image(0, 3, 'foam').setOrigin(0, 0).setDepth(-49).setAlpha(0.35);
+      this.tweens.add({ targets: foamA, alpha: { from: 0.95, to: 0.3 }, y: { from: 0, to: 2 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: foamB, alpha: { from: 0.2, to: 0.75 }, y: { from: 4, to: 1 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
       // kilau air
       var R = rng(5), placed = 0, tries = 0;
@@ -965,6 +1030,8 @@ function createSceneClass() {
       M.obstacles.forEach(function (o) {
         var key = o.kind === 'rock' ? 'rock' + o.v : o.kind;
         var p = self.gp(o.gx, o.gy, ELEV_LAND);
+        if (o.kind === 'palm') self.add.ellipse(p.x + 12, p.y + 1, 54, 18, 0x0b3d14, 0.28).setDepth(-49);
+        else if (o.kind === 'bush') self.add.ellipse(p.x + 2, p.y, 26, 9, 0x0b3d14, 0.25).setDepth(-49);
         var img = self.add.image(p.x, p.y, key).setOrigin(self.origins[key][0], self.origins[key][1]).setDepth(p.y);
         if (o.kind === 'palm') {
           self.tweens.add({ targets: img, angle: { from: -1.4, to: 1.4 }, duration: 2600 + Math.random() * 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: Math.random() * 1500 });
@@ -1087,7 +1154,8 @@ function createSceneClass() {
       var st = this.fish.state;
       if (st === 'idle') this.startCast();
       else if (st === 'casting' || st === 'waiting') this.cancelFish('Kail ditarik kembali');
-      else if (st === 'bite') this.landFish();
+      else if (st === 'bite') this.startReel();
+      else if (st === 'reel') this.reelPull();
     }
     pressTalk() {
       if (Ctl.modal || !this.nearNpc) return;
@@ -1140,12 +1208,25 @@ function createSceneClass() {
       this.hideFishing();
       if (msg) UI.toast('<div>' + msg + '</div>', '#5fe0e6', false, 1400);
     }
-    loseFish() {
+    startReel() {
+      var f = this.fish;
+      f.state = 'reel'; f.t = 0; f.prog = 0.25; f.kick = 0; f.pulls = 0; f.reel = REEL[f.def.rarity];
+      this.bang.setVisible(false);
+      this.reelPull();
+    }
+    reelPull() {
+      var f = this.fish;
+      f.prog = Math.min(1, f.prog + f.reel.gain);
+      f.kick = 1; f.pulls++;
+      if (f.pulls % 3 === 0) this.splash(f.bx, f.by);
+      if (f.prog >= 1) this.landFish();
+    }
+    loseFish(msg) {
       var f = this.fish;
       f.state = 'cooldown'; f.t = 0; f.def = null;
       this.hideFishing();
       this.splash(f.bx, f.by);
-      UI.toast('<div>Ikan lepas! Kamu terlambat menarik.</div>', '#ff7b7b', false, 1900);
+      UI.toast('<div>' + (msg || 'Ikan lepas! Kamu terlambat menarik.') + '</div>', '#ff7b7b', false, 1900);
     }
     landFish() {
       var self = this, f = this.fish, def = f.def;
@@ -1255,6 +1336,18 @@ function createSceneClass() {
         UI.setBite(1 - f.t / f.window);
         if (f.t >= f.window) { this.loseFish(); return; }
       }
+      else if (st === 'reel') {
+        f.t += dt;
+        if (f.t > 0.7) f.prog -= f.reel.decay * dt;
+        f.kick = Math.max(0, f.kick - dt * 6);
+        g.tip.y += f.kick * 5;
+        bx = g.tx + Math.sin(time * 0.045) * 6 * (1.2 - f.prog); by = g.ty + 3 + Math.sin(time * 0.07) * 3;
+        sag = 2;
+        var p3 = (time * 0.006) % 1;
+        this.ring.setVisible(true).setPosition(g.tx, g.ty + 2).setDepth(g.ty - 1).setScale(0.6 + p3 * 1.3).setAlpha(1 - p3);
+        if (f.prog >= 1) { this.landFish(); return; }
+        if (f.prog <= 0) { this.loseFish('Ikan lepas! Tarikanmu kurang cepat.'); return; }
+      }
       f.bx = g.tx; f.by = g.ty;
       this.bobber.setVisible(true).setPosition(bx, by).setDepth(Math.max(g.ty, by) + 1);
 
@@ -1262,7 +1355,7 @@ function createSceneClass() {
       var rg = this.rodG; rg.clear().setDepth(this.foot.y + 2);
       rg.lineStyle(3, 0x6b4423, 1); rg.lineBetween(g.hand.x, g.hand.y, g.tip.x, g.tip.y);
       rg.lineStyle(1, 0xc9a06a, 1); rg.lineBetween(g.hand.x, g.hand.y - 1, g.tip.x, g.tip.y - 1);
-      rg.lineStyle(1, 0xffffff, 0.9); rg.beginPath(); rg.moveTo(g.tip.x, g.tip.y);
+      rg.lineStyle(1, (st === 'reel' && f.prog < 0.3) ? 0xff5252 : 0xffffff, 0.9); rg.beginPath(); rg.moveTo(g.tip.x, g.tip.y);
       for (var k = 1; k <= 14; k++) {
         var t = k / 14;
         rg.lineTo(g.tip.x + (bx - g.tip.x) * t, g.tip.y + (by - g.tip.y) * t + Math.sin(t * Math.PI) * sag);
@@ -1272,6 +1365,7 @@ function createSceneClass() {
 
     updateHud() {
       var f = this.fish, st = f.state, M = this.map;
+      UI.setReel(st === 'reel', f.prog || 0);
       var tgt = (st === 'idle' || st === 'cooldown') && !Ctl.modal ? this.findFishingTarget() : null;
       if (st === 'idle' || st === 'cooldown') {
         UI.setFishButton('LEMPAR', '', st === 'idle' && !!tgt);
@@ -1283,6 +1377,8 @@ function createSceneClass() {
         UI.setFishButton('BATAL', 'cancel', true); UI.setBanner('Menunggu ikan menggigit' + '...'.slice(0, 1 + Math.floor(performance.now() / 400) % 3), ''); UI.setSpot('');
       } else if (st === 'bite') {
         UI.setFishButton('TARIK!', 'bite', true); UI.setBanner('IKAN MENGGIGIT! TARIK SEKARANG!', 'bite'); UI.setSpot('');
+      } else if (st === 'reel') {
+        UI.setFishButton('TARIK!', 'bite', true); UI.setBanner('TARIK TERUS SAMPAI BAR PENUH!', 'reel'); UI.setSpot('');
       }
       this.nearNpc = Math.hypot(this.gx - M.npc.gx, this.gy - M.npc.gy) < 2.7;
       UI.showTalk(this.nearNpc && !Ctl.modal && (st === 'idle' || st === 'cooldown'));
