@@ -25,7 +25,8 @@ html, body {
   position: absolute; inset: 0; pointer-events: none;
   background:
     radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,30,55,.38) 100%),
-    linear-gradient(160deg, rgba(255,236,170,.14) 0%, rgba(255,236,170,0) 45%);
+    linear-gradient(112deg, rgba(255,244,190,0) 18%, rgba(255,244,190,.09) 26%, rgba(255,244,190,0) 36%, rgba(255,244,190,0) 48%, rgba(255,244,190,.07) 56%, rgba(255,244,190,0) 66%),
+    linear-gradient(160deg, rgba(255,226,150,.16) 0%, rgba(255,226,150,0) 48%);
 }
 #hud { position: absolute; inset: 0; pointer-events: none; }
 #hud > * { position: absolute; }

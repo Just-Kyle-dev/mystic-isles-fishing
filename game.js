@@ -256,19 +256,8 @@ function buildMap() {
     return at(ci + 1, cj) === WATER || at(ci - 1, cj) === WATER || at(ci, cj + 1) === WATER || at(ci, cj - 1) === WATER;
   }
   place('palm', 12, function (ci, cj) { var d = dist(ci, cj); return d > 4.5 && d < 10.8; }, 2.6);
-  place('tree', 5, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.6);
-  place('bush', 7, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
+  place('bush', 8, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
   place('rock', 8, function (ci, cj) { return nearWater(ci, cj) || dist(ci, cj) > 7.6; }, 2.3);
-
-  function addProp(kind, ci, cj) {
-    var tt = at(ci, cj);
-    if (tt !== GRASS && tt !== SAND) return;
-    for (var o = 0; o < obstacles.length; o++) if (obstacles[o].i === ci && obstacles[o].j === cj) return;
-    if (ci === stall.i && cj === stall.j) return;
-    obstacles.push({ kind: kind, gx: ci + 0.5, gy: cj + 0.5, i: ci, j: cj, v: 0 });
-  }
-  addProp('sign', dockStart - 2, C - 2); addProp('lamp', dockStart - 2, C + 1);
-  addProp('lamp', stall.i + 3, stall.j + 2); addProp('lamp', stall.i - 1, stall.j - 2);
 
   // dekor tanpa tabrakan: alang-alang di tepi air, teratai, bayangan ikan
   var R2 = rng(777), decor = [], fishC = [], cand2 = [];
@@ -285,7 +274,7 @@ function buildMap() {
     if (!blocked) decor.push({ kind: 'reed', gx: rx, gy: ry });
   }
   var pads = 0;
-  for (var tries = 0; tries < 900 && pads < 20; tries++) {
+  for (var tries = 0; tries < 900 && pads < 16; tries++) {
     var pi = 1 + Math.floor(R2() * (GRID - 2)), pj = 1 + Math.floor(R2() * (GRID - 2));
     if (at(pi, pj) !== WATER || at(pi + 1, pj) !== WATER || at(pi, pj + 1) !== WATER || at(pi + 1, pj + 1) !== WATER) continue;
     var nearL = false;
@@ -303,6 +292,40 @@ function buildMap() {
     var nl2 = false;
     for (a2 = -4; a2 <= 4 && !nl2; a2++) for (b2 = -4; b2 <= 4; b2++) if (isLand(at(fi + a2, fj + b2))) { nl2 = true; break; }
     if (okf && nl2) fishC.push({ gx: fi + 0.5, gy: fj + 0.5, r: 26, n: 1 });
+  }
+
+  // dekor tropis tambahan (murni visual, tanpa tabrakan)
+  function hasObs(ci, cj) { for (var o = 0; o < obstacles.length; o++) if (obstacles[o].i === ci && obstacles[o].j === cj) return true; return ci === stall.i && cj === stall.j; }
+  function onLane(x, y) { return segDist(x, y, stall.i + 1, stall.j + 0.5, C + 0.5, C + 0.5) < 1.7 || segDist(x, y, C + 0.5, C + 0.5, dockStart, C + 0.5) < 1.9 || Math.hypot(x - spawn.gx, y - spawn.gy) < 2.3 || Math.hypot(x - npc.gx, y - npc.gy) < 2.7; }
+  var nb = 0;
+  for (q = 0; q < cand2.length && nb < 6; q++) {
+    var bi = cand2[q][0], bj = cand2[q][1], bxx = bi + 0.5, byy = bj + 0.5;
+    if (T[bj * GRID + bi] !== GRASS || hasObs(bi, bj) || onLane(bxx, byy) || dist(bi, bj) > 7.0 || !farFrom(decor, bxx, byy, 2.6)) continue;
+    decor.push({ kind: 'banana', gx: bxx, gy: byy }); nb++;
+  }
+  [[dockStart - 1, C - 2], [dockStart - 1, C + 1], [stall.i + 3, stall.j + 2], [stall.i - 1, stall.j - 2]].forEach(function (tp) {
+    var tt = at(tp[0], tp[1]);
+    if ((tt === GRASS || tt === SAND) && !hasObs(tp[0], tp[1])) decor.push({ kind: 'torch', gx: tp[0] + 0.5, gy: tp[1] + 0.5 });
+  });
+  decor.push({ kind: 'barrel', gx: stall.i + 0.25, gy: stall.j + 1.55 });
+  decor.push({ kind: 'crate', gx: stall.i + 2.55, gy: stall.j + 0.1 });
+  for (q = 0; q < cand2.length; q++) {
+    var pi0 = cand2[q][0], pj0 = cand2[q][1], pgx = pi0 + 0.5, pgy = pj0 + 0.5;
+    if (T[pj0 * GRID + pi0] !== SAND || nearWater(pi0, pj0) || hasObs(pi0, pj0) || dist(pi0, pj0) < 8.2 || dist(pi0, pj0) > 10 || onLane(pgx, pgy) || !farFrom(decor, pgx, pgy, 3)) continue;
+    if (!(isLand(at(pi0 + 1, pj0)) && isLand(at(pi0, pj0 + 1)) && isLand(at(pi0 - 1, pj0)) && isLand(at(pi0, pj0 - 1)))) continue;
+    decor.push({ kind: 'towel', gx: pgx + 0.35, gy: pgy + 0.55 }); decor.push({ kind: 'parasol', gx: pgx - 0.2, gy: pgy - 0.25 });
+    break;
+  }
+  if (at(dockStart + 2, C + 1) === WATER && at(dockStart + 3, C + 1) === WATER && at(dockStart + 2, C + 2) === WATER) decor.push({ kind: 'boat', gx: dockStart + 2.9, gy: C + 1.8 });
+  var nc = 0;
+  for (tries = 0; tries < 900 && nc < 10; tries++) {
+    var ci2 = 1 + Math.floor(R2() * (GRID - 2)), cj2 = 1 + Math.floor(R2() * (GRID - 2));
+    if (at(ci2, cj2) !== WATER || at(ci2 + 1, cj2) !== WATER || at(ci2, cj2 + 1) !== WATER || at(ci2 + 1, cj2 + 1) !== WATER) continue;
+    var nl3 = false;
+    for (var a3 = -2; a3 <= 1 && !nl3; a3++) for (var b3 = -2; b3 <= 1; b3++) if (isLand(at(ci2 + a3, cj2 + b3))) { nl3 = true; break; }
+    var cgx = ci2 + 0.3 + R2() * 0.4, cgy = cj2 + 0.3 + R2() * 0.4, okc = nl3;
+    for (var sp3 = 0; sp3 < spots.length; sp3++) if (Math.hypot(cgx - spots[sp3].gx, cgy - spots[sp3].gy) < 2.4) okc = false;
+    if (okc && farFrom(decor, cgx, cgy, 1.8)) { decor.push({ kind: 'coral', gx: cgx, gy: cgy }); nc++; }
   }
 
   // 7) peta bisa-dilalui
@@ -327,52 +350,422 @@ function drawDiamond(g, cx, cy, col) {            // diamond 64x32, pixel-perfec
 }
 function rowHW(y) { return y < 16 ? 2 * y + 2 : 2 * (31 - y) + 2; }
 
+/* ---------- helper pixel art (cahaya dari kiri-atas, bayangan jatuh ke kanan-bawah) ---------- */
+function PX(g, x, y, col, S) { g.fillStyle = col; g.fillRect(Math.round(x) * S, Math.round(y) * S, S, S); }
+function segDist(x, y, ax, ay, bx, by) {
+  var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2));
+  return Math.hypot(x - (ax + dx * u), y - (ay + dy * u));
+}
+/* daun lebar (pisang, semak): cols = [terang, tengah, gelap, tulang daun] */
+function leaf(g, x0, y0, ang, len, wmax, S, cols, droop) {
+  var ca = Math.cos(ang), sa = Math.sin(ang), nx = -sa, ny = ca, sg = ny > 0 ? 1 : -1, t, u, w, cx, cy, d, col;
+  droop = droop || 0;
+  for (t = 0; t <= len; t += 0.5) {
+    u = t / len; w = wmax * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.93 + 0.04)), 0.75);
+    cx = x0 + ca * t; cy = y0 + sa * t + droop * u * u;
+    for (d = -w; d <= w; d += 0.5) {
+      col = d * sg < -w * 0.35 ? cols[0] : (d * sg > w * 0.4 ? cols[2] : cols[1]);
+      PX(g, cx + nx * d, cy + ny * d, col, S);
+    }
+    if (cols[3]) PX(g, cx, cy, cols[3], S);
+  }
+}
+/* daun menyirip (kelapa, pakis) */
+function frond(g, x0, y0, ang, len, droop, S, cols, ll) {
+  var ca = Math.cos(ang), sa = Math.sin(ang), t, u, cx, cy, tx, ty, tl, nx, ny, side, m, vx, vy, vl, ln, upper;
+  ll = ll || 6;
+  for (t = 0; t <= len; t += 1.7) {
+    u = t / len;
+    cx = x0 + ca * t; cy = y0 + sa * t + droop * u * u;
+    tx = ca; ty = sa + 2 * droop * u / len; tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+    nx = -ty; ny = tx;
+    ln = ll * Math.sin(Math.PI * (0.1 + 0.8 * u)) * (1 - u * 0.25);
+    for (side = -1; side <= 1; side += 2) {
+      vx = side * nx * 0.8 + tx * 0.85; vy = side * ny * 0.8 + ty * 0.85; vl = Math.hypot(vx, vy); vx /= vl; vy /= vl;
+      upper = vy < 0.2;
+      for (m = 1; m <= ln; m += 0.5) {
+        PX(g, cx + vx * m, cy + vy * m + 0.07 * m * m, upper ? (m > ln * 0.6 ? cols[0] : cols[1]) : (m > ln * 0.6 ? cols[1] : cols[2]), S);
+      }
+    }
+    PX(g, cx, cy, cols[3], S);
+  }
+}
+
+/* ---------- pohon kelapa (2 variasi) ---------- */
+function palmTrunk(g, S, bx, by, cx, cy, bend, cl) {
+  var i, t, d, w, x, y, col;
+  for (i = 0; i <= 70; i++) {
+    t = i / 70; x = bx + (cx - bx) * t + Math.sin(t * Math.PI) * bend; y = by + (cy - by) * t;
+    w = 3.2 - t * 1.3 + (t < 0.07 ? 1.3 : 0);
+    for (d = -w; d <= w; d += 0.5) {
+      col = d < -w * 0.45 ? cl[0] : (d > w * 0.4 ? cl[2] : cl[1]);
+      if (i % 6 === 0) col = d < -w * 0.45 ? cl[1] : (d > w * 0.4 ? '#3f2812' : cl[2]);
+      PX(g, x + d, y, col, S);
+    }
+  }
+}
+function makePalm(variant) {
+  var S = 2, LW = 96, LH = 90, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], k;
+  var B = variant === 1;
+  var bx = B ? 56 : 38, by = 84, cx = B ? 40 : 58, cy = B ? 38 : 30, bend = B ? 4 : -4.5;
+  var back = B ? ['#7fcf4e', '#3f9a3a', '#1b6a33', '#a6d96a'] : ['#6fd04f', '#2f9a3f', '#17683a', '#9ee07a'];
+  var front = B ? ['#d8f57a', '#86d84e', '#3da13a', '#e9ffa0'] : ['#a6ef6a', '#4fc24a', '#228a3c', '#d4ff9e'];
+  palmTrunk(g, S, bx, by, cx, cy, bend, ['#cf9a60', '#98652f', '#5a381c']);
+  var fb = B ? [[-2.85, 25, 9], [-2.1, 22, 4], [-1.05, 22, 4], [-0.3, 25, 9], [-1.57, 15, 2]] : [[-2.95, 29, 14], [-2.25, 24, 6], [-0.9, 24, 6], [-0.2, 29, 14], [-1.57, 16, 1]];
+  var ff = B ? [[3.05, 27, 16], [2.45, 22, 15], [1.85, 14, 11], [1.3, 14, 11], [0.7, 22, 15], [0.1, 27, 16]] : [[3.1, 30, 18], [2.5, 25, 17], [1.85, 15, 12], [1.3, 15, 12], [0.65, 25, 17], [0.05, 30, 18]];
+  fb.forEach(function (f) { frond(g, cx, cy, f[0], f[1], f[2], S, back, 8); });
+  [[-3, 3], [1, 4], [4, 2]].forEach(function (p, n) {
+    disc(g, cx + p[0], cy + p[1], 2, n === 1 ? '#7d4f28' : '#6b4423', S); PX(g, cx + p[0] - 1, cy + p[1] - 1, '#b98a52', S);
+  });
+  if (B) { for (k = 0; k < 6; k++) PX(g, cx - 5 + k % 3 * 2, cy + 6 + (k >> 1), k % 2 ? '#f08a2a' : '#d9641a', S); }
+  ff.forEach(function (f) { frond(g, cx, cy, f[0], f[1], f[2], S, front, 9); });
+  disc(g, cx, cy, 2, '#2f7a3a', S); PX(g, cx - 1, cy - 1, '#8ee07a', S);
+  return { canvas: c, ox: bx / LW, oy: (by + 1) / LH };
+}
+
+/* ---------- semak tropis (hibiscus & pakis) ---------- */
+function makeBush(variant) {
+  var S = 2, LW = 46, LH = 32, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], k, a;
+  ell(g, 23, 26, 12, 3, '#1b5a28', S);
+  if (variant === 0) {
+    var cols = ['#7be05a', '#3fae45', '#1f7a3a', '#c4f58a'];
+    for (k = 0; k < 13; k++) { a = -Math.PI + 0.2 + k * (Math.PI - 0.4) / 12; leaf(g, 23, 26, a, 11 + (k % 4) * 2.5, 2.3, S, cols, 3); }
+    [[13, 14], [31, 13], [22, 9], [26, 17]].forEach(function (p) {
+      [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [1, 1]].forEach(function (o) { PX(g, p[0] + o[0], p[1] + o[1], '#ff5e86', S); });
+      PX(g, p[0] - 1, p[1] - 1, '#ffa6c0', S); PX(g, p[0], p[1], '#ffd84a', S);
+    });
+  } else {
+    var cf = ['#9be85d', '#52bd48', '#25813a', '#d6f7a0'];
+    for (k = 0; k < 9; k++) { a = -Math.PI + 0.2 + k * (Math.PI - 0.4) / 8; frond(g, 23, 27, a, 15 + (k % 2) * 3, 5, S, cf, 5); }
+    [[15, 15], [30, 14], [23, 10]].forEach(function (p) { PX(g, p[0], p[1], '#e5392b', S); PX(g, p[0] + 1, p[1], '#e5392b', S); PX(g, p[0], p[1] - 1, '#ff9a8a', S); });
+  }
+  return { canvas: c, ox: 0.5, oy: 28 / LH };
+}
+
+/* ---------- batu (4 variasi: abu, pasir, vulkanik, gugusan berlumut) ---------- */
+function makeRock(v) {
+  var S = 2, LW = 30, LH = 20, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  var P = [
+    ['#4e5a67', '#74818f', '#a3b0bd', '#dbe4ec'],
+    ['#9a8460', '#c0aa80', '#e0cfa4', '#f6ecd0'],
+    ['#2f333d', '#4b505c', '#6d7482', '#9aa2b0'],
+    ['#566270', '#7d8a98', '#a8b5c2', '#e0e8ef']
+  ][v];
+  function boulder(x, y, rx, ry) {
+    ell(g, x + 1, y + 1, rx, ry, P[0], S); ell(g, x, y, rx, ry, P[1], S);
+    ell(g, x - 1, y - 1, Math.max(1, rx - 3), Math.max(1, ry - 2), P[2], S);
+    ell(g, x - 2, y - Math.floor(ry / 2), Math.max(1, Math.floor(rx / 3)), 1, P[3], S);
+    ell(g, x + 1, y + ry - 1, rx - 1, 1, P[0], S);
+  }
+  if (v === 3) { boulder(11, 13, 7, 5); boulder(19, 14, 5, 4); boulder(15, 10, 4, 3); }
+  else if (v === 1) { boulder(14, 13, 10, 5); boulder(9, 14, 5, 3); }
+  else { boulder(14, 12, v === 2 ? 8 : 10, 7); }
+  PX(g, 12, 9, P[0], S); PX(g, 13, 10, P[0], S); PX(g, 14, 11, P[0], S);
+  PX(g, 18, 12, P[0], S); PX(g, 19, 13, P[0], S);
+  if (v === 1 || v === 3) { ell(g, 14, 7, 4, 1, '#4f9a3f', S); ell(g, 13, 7, 2, 1, '#7acb5a', S); PX(g, 17, 8, '#4f9a3f', S); }
+  if (v === 2) { [[9, 14], [20, 13], [14, 17]].forEach(function (p) { PX(g, p[0], p[1], '#e8eef2', S); }); }
+  [[4, 17], [24, 17], [7, 18]].forEach(function (p) { ell(g, p[0], p[1], 1, 1, P[1], S); PX(g, p[0], p[1], P[2], S); });
+  return { canvas: c, ox: 0.5, oy: 17 / LH };
+}
+
+/* ---------- kios ikan ---------- */
+function makeStall() {
+  var S = 2, LW = 62, LH = 54, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x, y;
+  function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a * S, b * S, w * S, h * S); }
+  // tiang
+  R(5, 14, 4, 34, '#7a4e24'); R(5, 14, 1, 34, '#a8763c'); R(8, 14, 1, 34, '#573517');
+  R(53, 14, 4, 34, '#7a4e24'); R(53, 14, 1, 34, '#a8763c'); R(56, 14, 1, 34, '#573517');
+  // dinding belakang (papan)
+  R(9, 17, 44, 17, '#c9a56f');
+  for (x = 9; x < 53; x += 5) { R(x, 17, 1, 17, '#a98550'); R(x + 1, 17, 1, 17, '#dcb985'); }
+  R(9, 17, 44, 2, '#8f6a3a');
+  // jaring & ikan gantung
+  for (x = 12; x < 28; x += 2) R(x, 19 + (x % 4 === 0 ? 1 : 0), 1, 6, '#e9dcb4');
+  R(12, 19, 16, 1, '#e9dcb4'); R(12, 22, 16, 1, '#e9dcb4');
+  R(38, 20, 5, 2, '#8ecae6'); R(43, 20, 2, 3, '#8ecae6'); R(38, 20, 5, 1, '#d6f0fb');
+  R(46, 22, 4, 2, '#ffb703'); R(50, 22, 2, 3, '#ffb703');
+  // meja
+  R(3, 33, 56, 3, '#e1ab70'); R(3, 33, 56, 1, '#f6cf98'); R(3, 35, 56, 1, '#a8743a');
+  R(4, 36, 54, 12, '#a9743c');
+  for (x = 4; x < 58; x += 6) { R(x, 36, 1, 12, '#85572a'); R(x + 1, 36, 1, 12, '#be8a52'); }
+  R(4, 46, 54, 2, '#6f4620');
+  // baki es + ikan di atas meja
+  R(8, 29, 22, 4, '#bfe2ee'); R(8, 29, 22, 1, '#eefaff'); R(8, 32, 22, 1, '#7fb4c8');
+  [[10, 27, '#6fa8dc'], [16, 26, '#e76f51'], [22, 27, '#ffb703']].forEach(function (f) { R(f[0], f[1], 6, 3, f[2]); R(f[0] + 6, f[1], 2, 3, f[2]); R(f[0], f[1], 6, 1, '#ffffffaa'); PX(g, f[0] + 1, f[1] + 1, '#222', S); });
+  // peti kayu berisi ikan
+  R(37, 28, 17, 5, '#8b5a2b'); R(37, 28, 17, 1, '#b98550'); R(37, 31, 17, 1, '#6b4420');
+  [[39, '#8ecae6'], [44, '#e63946'], [49, '#8ecae6']].forEach(function (f) { R(f[0], 26, 3, 3, f[1]); R(f[0] + 3, 25, 2, 5, f[1]); });
+  // papan nama
+  R(19, 38, 24, 8, '#4a2e14'); R(20, 39, 22, 6, '#6b4524'); R(20, 39, 22, 1, '#8a5d30');
+  g.fillStyle = '#ffffff'; g.font = 'bold ' + (7 * S) + 'px monospace'; g.textAlign = 'center';
+  g.fillText('IKAN', 31 * S, 44.4 * S);
+  // atap kanopi bergaris merah-putih + lengkung bawah
+  for (x = 0; x < 62; x++) {
+    var red = (Math.floor(x / 4) % 2) === 1, hi = red ? '#f25a64' : '#ffffff', mid = red ? '#d62835' : '#f1f1f1', lo = red ? '#a51825' : '#cfd3d6';
+    R(x, 6, 1, 1, hi); R(x, 7, 1, 7, mid); R(x, 12, 1, 2, lo);
+    var sc = (x % 4 === 0 || x % 4 === 3) ? 1 : 3; R(x, 14, 1, sc, lo); R(x, 14, 1, 1, mid);
+  }
+  R(0, 4, 62, 2, '#8e1a24'); R(0, 4, 62, 1, '#c93442'); R(2, 3, 58, 1, '#8e1a24');
+  return { canvas: c, ox: 0.5, oy: 48 / LH };
+}
+
+/* ---------- air: tiga tekstur ubin (riak, buih tipis, cahaya dasar laut) ---------- */
+function makeWaves(kind) {
+  var SZ = kind === 3 ? 256 : 128, SH = SZ / 2, cv = mkCanvas(SZ, SH), c = cv[0], g = cv[1], R = rng([0, 11, 29, 53][kind]), n, w, x, y;
+  function wr(a, b, ww, hh, col) { for (var ox = -SZ; ox <= 0; ox += SZ) for (var oy = -SH; oy <= 0; oy += SH) px(g, a + ox, b + oy, ww, hh, col); }
+  if (kind === 1) {
+    px(g, 0, 0, SZ, SH, '#1fb4c9');
+    for (n = 0; n < 12; n++) { w = 18 + Math.floor(R() * 20); x = Math.floor(R() * SZ); y = Math.floor(R() * SH); wr(x, y, w, 3, '#1ba6be'); }
+    for (n = 0; n < 22; n++) {
+      w = 8 + Math.floor(R() * 14); x = Math.floor(R() * SZ); y = Math.floor(R() * SH);
+      wr(x, y, w, 1, '#58d9e8'); wr(x + 2, y + 1, w - 4, 1, '#17a0ba'); wr(x + 4, y + 2, Math.max(2, w - 8), 1, '#1593ad');
+    }
+    for (n = 0; n < 36; n++) wr(Math.floor(R() * SZ), Math.floor(R() * SH), 1, 1, '#8fe8f0');
+  } else if (kind === 2) {
+    for (n = 0; n < 12; n++) { w = 6 + Math.floor(R() * 12); x = Math.floor(R() * SZ); y = Math.floor(R() * SH); wr(x, y, w, 1, 'rgba(255,255,255,0.6)'); wr(x + 1, y + 1, w - 2, 1, 'rgba(255,255,255,0.22)'); }
+  } else {
+    for (n = 0; n < 40; n++) {
+      x = Math.floor(R() * SZ); y = Math.floor(R() * SH);
+      wr(x + 2, y, 4, 1, 'rgba(215,255,255,0.4)'); wr(x, y + 1, 8, 1, 'rgba(215,255,255,0.4)'); wr(x + 2, y + 2, 4, 1, 'rgba(215,255,255,0.4)');
+      wr(x + 3, y + 1, 2, 1, 'rgba(255,255,255,0.7)');
+    }
+  }
+  return c;
+}
+function makeSparkle() {
+  var cv = mkCanvas(17, 17), c = cv[0], g = cv[1], k;
+  for (k = 1; k <= 7; k++) { var a = 1 - k / 8; px(g, 8 + k, 8, 1, 1, 'rgba(255,255,255,' + (0.9 * a).toFixed(2) + ')'); px(g, 8 - k, 8, 1, 1, 'rgba(255,255,255,' + (0.9 * a).toFixed(2) + ')'); }
+  for (k = 1; k <= 5; k++) { var b = 1 - k / 6; px(g, 8, 8 + k, 1, 1, 'rgba(255,255,255,' + (0.9 * b).toFixed(2) + ')'); px(g, 8, 8 - k, 1, 1, 'rgba(255,255,255,' + (0.9 * b).toFixed(2) + ')'); }
+  px(g, 7, 7, 3, 3, '#ffffff');
+  return c;
+}
+function makeGlow() {
+  var cv = mkCanvas(64, 64), c = cv[0], g = cv[1];
+  g.imageSmoothingEnabled = true;
+  var gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,232,150,0.9)'); gr.addColorStop(0.4, 'rgba(255,200,90,0.35)'); gr.addColorStop(1, 'rgba(255,180,60,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return c;
+}
+function makeShadowTex() {
+  var cv = mkCanvas(64, 24), c = cv[0], g = cv[1];
+  ell(g, 32, 12, 31, 11, 'rgba(6,40,56,0.12)', 1); ell(g, 32, 12, 26, 9, 'rgba(6,40,56,0.14)', 1);
+  ell(g, 32, 12, 20, 7, 'rgba(6,40,56,0.16)', 1); ell(g, 32, 12, 13, 5, 'rgba(6,40,56,0.18)', 1);
+  return c;
+}
+function makeFlame() {
+  var S = 2, cv = mkCanvas(10 * S, 16 * S), c = cv[0], g = cv[1];
+  disc(g, 5, 11, 4, '#e8531f', S); ell(g, 5, 8, 3, 5, '#ff9a2a', S); ell(g, 5, 9, 2, 4, '#ffd84a', S); PX(g, 5, 2, '#ff9a2a', S); PX(g, 5, 4, '#ff9a2a', S);
+  ell(g, 5, 11, 1, 2, '#fff6c2', S);
+  return c;
+}
+
+/* ---------- tanaman air & pantai ---------- */
+function makeReed() {
+  var S = 2, LW = 24, LH = 34, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  var lc = ['#7fd35e', '#3f9a3f', '#1f6a33', null];
+  [[-1.25, 18], [-1.55, 22], [-1.85, 19], [-1.05, 14], [-2.15, 14]].forEach(function (b) { leaf(g, 12, 30, b[0], b[1], 1.1, S, lc, b[0] > -1.55 ? -3 : 3); });
+  [[8, 21, 1], [12, 25, 0], [16, 20, 1], [10, 17, 0]].forEach(function (s_) {
+    var x = s_[0], h = s_[1];
+    px(g, x * S, (30 - h) * S, S, h * S, '#3f8a3a'); px(g, (x + 1) * S, (30 - h) * S, S, h * S, '#6cc15a');
+    px(g, x * S - S, (30 - h) * S, 3 * S, 7 * S, '#5a3318'); px(g, x * S, (30 - h) * S, S, 7 * S, '#8f5a2c'); px(g, x * S, (29 - h) * S, S, S, '#d9b27c');
+  });
+  return { canvas: c, ox: 0.5, oy: 31 / LH };
+}
+function makePad(flower) {
+  var S = 2, LW = 18, LH = 10, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 9, 5, 7, 3, '#2c9444', S); ell(g, 9, 4, 6, 2, '#4cc05f', S); ell(g, 7, 4, 3, 1, '#8ee07a', S);
+  g.clearRect(10 * S, 5 * S, 7 * S, S);
+  if (flower) { px(g, 6 * S, 1 * S, 4 * S, 3 * S, '#ff86b0'); px(g, 7 * S, 0, 2 * S, S, '#ffb3cc'); px(g, 7 * S, 2 * S, 2 * S, S, '#fff3a0'); }
+  return { canvas: c, ox: 0.5, oy: 0.55 };
+}
+function makeCoral() {
+  var S = 2, LW = 28, LH = 20, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], k;
+  ell(g, 14, 17, 11, 2, '#7a6a8a', S); ell(g, 13, 16, 8, 1, '#a090b0', S);
+  [[8, 16, -1.2, 9, '#ff6fa4', '#ffb0cd'], [14, 16, -1.57, 12, '#ff8a4a', '#ffc08a'], [19, 16, -1.95, 9, '#d9487f', '#ff8fb8'], [11, 16, -1.45, 7, '#c05cd0', '#e5a0f0']].forEach(function (b) {
+    var x = b[0], y = b[1], t, a;
+    for (t = 0; t < b[3]; t++) {
+      a = b[2] + Math.sin(t * 0.9) * 0.18;
+      x += Math.cos(a) * 1; y += Math.sin(a) * 1;
+      disc(g, Math.round(x), Math.round(y), t < b[3] - 3 ? 1 : 1, b[4], S); PX(g, x - 1, y - 1, b[5], S);
+    }
+    disc(g, Math.round(x), Math.round(y), 1, b[5], S);
+  });
+  return { canvas: c, ox: 0.5, oy: 17 / LH };
+}
+function makeBanana() {
+  var S = 2, LW = 46, LH = 46, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  var lc = ['#a2ec66', '#55bb4a', '#2a8a3b', '#d8f89a'];
+  px(g, 21 * S, 24 * S, 4 * S, 18 * S, '#6aa84a'); px(g, 21 * S, 24 * S, S, 18 * S, '#9bd76a'); px(g, 24 * S, 24 * S, S, 18 * S, '#3f7a35');
+  [[-2.95, 18, 7], [-0.2, 18, 7], [-2.35, 17, 4], [-0.8, 17, 4], [-1.57, 14, 2], [3.0, 12, 12], [0.1, 12, 12]].forEach(function (l) { leaf(g, 23, 26, l[0], l[1], 4.3, S, lc, l[2]); });
+  [[24, 30], [26, 31], [28, 30], [25, 33]].forEach(function (b, n) { px(g, b[0] * S, b[1] * S, 2 * S, 3 * S, n % 2 ? '#e9cf37' : '#bcd13a'); px(g, b[0] * S, b[1] * S, S, 3 * S, '#fff08a'); });
+  disc(g, 25, 36, 2, '#7b2d6e', S); PX(g, 24, 35, '#b0549a', S);
+  return { canvas: c, ox: 0.5, oy: 42 / LH };
+}
+function makeTorch() {
+  var S = 2, LW = 14, LH = 42, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], y;
+  px(g, 3 * S, 39 * S, 8 * S, 2 * S, '#6b4526'); px(g, 3 * S, 39 * S, 8 * S, S, '#9a6b3c');
+  for (y = 12; y < 40; y++) { px(g, 5 * S, y * S, 4 * S, S, (y % 7 === 0) ? '#6a4a1c' : '#b8913f'); px(g, 5 * S, y * S, S, S, (y % 7 === 0) ? '#8a6a30' : '#e0c070'); px(g, 8 * S, y * S, S, S, '#7d5f27'); }
+  px(g, 3 * S, 7 * S, 8 * S, 5 * S, '#8f6a2c'); px(g, 3 * S, 7 * S, 8 * S, S, '#cda255'); px(g, 4 * S, 8 * S, 6 * S, 2 * S, '#2d1c0c'); px(g, 3 * S, 11 * S, 8 * S, S, '#5e4418');
+  return { canvas: c, ox: 0.5, oy: 40 / LH };
+}
+function makeParasol() {
+  var S = 2, LW = 46, LH = 54, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x, y;
+  px(g, 22 * S, 12 * S, 2 * S, 38 * S, '#efe6d2'); px(g, 22 * S, 12 * S, S, 38 * S, '#ffffff'); px(g, 23 * S, 12 * S, S, 38 * S, '#bfb398');
+  ell(g, 23, 51, 3, 1, '#a89f86', S);
+  for (y = 3; y <= 15; y++) {
+    var hw = Math.round(21 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 15) / 12.5, 2))));
+    for (x = -hw; x <= hw; x++) {
+      var stripe = Math.floor((x + 30) / 6) % 2, col = stripe ? '#ffffff' : '#1fb5c9';
+      if (x > hw * 0.35) col = stripe ? '#d9e4e8' : '#168da0'; else if (x < -hw * 0.45 && y < 9) col = stripe ? '#ffffff' : '#52d5e6';
+      PX(g, 23 + x, y, col, S);
+    }
+  }
+  for (x = -20; x <= 20; x += 5) { px(g, (23 + x) * S, 15 * S, 4 * S, 2 * S, (Math.floor((x + 30) / 6) % 2) ? '#d9e4e8' : '#168da0'); }
+  px(g, 22 * S, 1 * S, 2 * S, 2 * S, '#efe6d2');
+  return { canvas: c, ox: 0.5, oy: 51 / LH };
+}
+function makeTowel() {
+  var S = 2, LW = 40, LH = 20, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], r, x;
+  for (r = 0; r < 14; r++) for (x = 0; x < 24; x++) {
+    var X = 4 + x + Math.floor(r * 1.2), Y = 2 + r;
+    PX(g, X, Y, (Math.floor(x / 3) % 2) ? '#ff5e7a' : '#fff4f4', S);
+  }
+  for (r = 0; r < 14; r++) { PX(g, 4 + Math.floor(r * 1.2), 2 + r, '#a8263f', S); PX(g, 28 + Math.floor(r * 1.2), 2 + r, '#a8263f', S); }
+  for (x = 0; x < 24; x++) { PX(g, 4 + x, 2, '#a8263f', S); PX(g, 4 + x + 17, 15, '#a8263f', S); }
+  return { canvas: c, ox: 0.5, oy: 0.55 };
+}
+function makeBarrel() {
+  var S = 2, LW = 16, LH = 22, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], y;
+  ell(g, 8, 18, 6, 2, '#5b3a1a', S);
+  for (y = 6; y <= 18; y++) { var hw = 6 - Math.round(Math.pow((y - 12) / 6.5, 2) * 1.2); px(g, (8 - hw) * S, y * S, hw * 2 * S, S, '#a9743c'); px(g, (8 - hw) * S, y * S, 2 * S, S, '#d4a064'); px(g, (8 + hw - 2) * S, y * S, 2 * S, S, '#7a4e24'); }
+  ell(g, 8, 6, 6, 2, '#c18a50', S); ell(g, 8, 6, 4, 1, '#5b3a1a', S);
+  px(g, 2 * S, 9 * S, 12 * S, S, '#3a3f48'); px(g, 2 * S, 15 * S, 12 * S, S, '#3a3f48');
+  return { canvas: c, ox: 0.5, oy: 19 / LH };
+}
+function makeCrate() {
+  var S = 2, LW = 22, LH = 22, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], k;
+  for (k = 0; k < 8; k++) { var hw = 9 - k; px(g, (11 - hw - 1) * S, (4 + k) * S, (hw * 2 + 2) * S, S, k < 2 ? '#e1ab70' : '#d09660'); }
+  px(g, 2 * S, 11 * S, 9 * S, 9 * S, '#a9743c'); px(g, 11 * S, 11 * S, 9 * S, 9 * S, '#85572a');
+  for (k = 0; k < 3; k++) { px(g, 2 * S, (12 + k * 3) * S, 9 * S, S, '#7a4e24'); px(g, 11 * S, (12 + k * 3) * S, 9 * S, S, '#5e3a1a'); }
+  px(g, 2 * S, 11 * S, 18 * S, S, '#e8b57a'); px(g, 9 * S, 1 * S, 4 * S, 3 * S, '#8ecae6'); px(g, 13 * S, 0, 2 * S, 5 * S, '#8ecae6');
+  return { canvas: c, ox: 0.5, oy: 20 / LH };
+}
+function makeBoat() {
+  var S = 2, LW = 56, LH = 28, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x, y;
+  ell(g, 28, 22, 26, 3, 'rgba(8,60,90,0.35)', S);
+  for (y = 10; y <= 21; y++) {
+    var hw = Math.round(25 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 10) / 12, 2))));
+    for (x = -hw; x <= hw; x++) {
+      var col = y < 13 ? '#e9f1f3' : y < 15 ? '#1f8fb8' : '#b97a40';
+      if (x > hw * 0.45) col = y < 13 ? '#c4d2d8' : y < 15 ? '#17708f' : '#8a5a2e'; else if (x < -hw * 0.5 && y > 14) col = '#d9a064';
+      if (y > 14 && (y + Math.floor((x + 40) / 7)) % 4 === 0) col = '#8a5a2e';
+      PX(g, 28 + x, y, col, S);
+    }
+  }
+  ell(g, 28, 9, 24, 3, '#e1ab70', S); ell(g, 28, 9, 21, 2, '#4a2e14', S); ell(g, 28, 9, 19, 1, '#6b4524', S);
+  px(g, 14 * S, 7 * S, 28 * S, S, '#b98550');
+  px(g, 20 * S, 7 * S, 3 * S, 3 * S, '#e1ab70'); px(g, 34 * S, 7 * S, 3 * S, 3 * S, '#e1ab70');
+  px(g, 51 * S, 6 * S, 3 * S, 4 * S, '#e9f1f3'); px(g, 3 * S, 6 * S, 3 * S, 4 * S, '#e9f1f3');
+  return { canvas: c, ox: 0.5, oy: 18 / LH };
+}
+function makeFishShadow() {
+  var S = 2, cv = mkCanvas(44, 20), c = cv[0], g = cv[1];
+  ell(g, 9, 5, 8, 3, 'rgba(5,45,80,0.5)', S); px(g, 17 * S, 3 * S, 2 * S, 4 * S, 'rgba(5,45,80,0.5)'); px(g, 19 * S, 2 * S, 2 * S, 6 * S, 'rgba(5,45,80,0.5)');
+  return c;
+}
+function makeCloud() {
+  var cv = mkCanvas(256, 128), c = cv[0], g = cv[1];
+  g.imageSmoothingEnabled = true;
+  [[90, 70, 60, 36], [150, 60, 66, 40], [200, 74, 44, 28], [120, 84, 70, 30]].forEach(function (b) {
+    var gr = g.createRadialGradient(b[0], b[1], 2, b[0], b[1], b[2]);
+    gr.addColorStop(0, 'rgba(0,25,50,0.9)'); gr.addColorStop(1, 'rgba(0,25,50,0)');
+    g.fillStyle = gr; g.save(); g.translate(b[0], b[1]); g.scale(1, b[3] / b[2]); g.translate(-b[0], -b[1]);
+    g.beginPath(); g.arc(b[0], b[1], b[2], 0, 6.2832); g.fill(); g.restore();
+  });
+  return c;
+}
+
+/* ---------- peta dasar: laut, pantai, rumput, jalan batu, dermaga ---------- */
 function makeGround(map) {
-  var T = map.T;
-  var plx = map.stall.i + 1, ply = map.stall.j + 0.5;
-  function segD(px_, py_, ax, ay, bx, by) {
-    var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((px_ - ax) * dx + (py_ - ay) * dy) / l2));
-    return Math.hypot(px_ - (ax + dx * u), py_ - (ay + dy * u));
-  }
-  function onPath(a, b) {
-    var x = a + 0.5, y = b + 0.5;
-    return Math.hypot(x - plx, y - ply) < 2.6 || segD(x, y, plx, ply, C + 0.5, C + 0.5) < 0.8 || segD(x, y, C + 0.5, C + 0.5, map.dockStart - 0.5, C + 0.5) < 0.8;
-  }
+  var T = map.T, plx = map.stall.i + 1, ply = map.stall.j + 0.5;
   var cv = mkCanvas(W, H), c = cv[0], g = cv[1];
-  var i, j;
+  var i, j, k, n;
   function at(a, b) { return (a < 0 || b < 0 || a >= GRID || b >= GRID) ? WATER : T[b * GRID + a]; }
   function isLand(t) { return t !== WATER; }
   function sx(a, b) { return (a - b) * 32 + W / 2; }
   function sy(a, b) { return (a + b) * 16; }
+  function onPath(a, b) {
+    var x = a + 0.5, y = b + 0.5;
+    return Math.hypot(x - plx, y - ply) < 2.15 || segDist(x, y, plx, ply, C + 0.5, C + 0.5) < 0.8 || segDist(x, y, C + 0.5, C + 0.5, map.dockStart - 0.5, C + 0.5) < 0.8;
+  }
+  function dashFill(cx, cy, col, alpha, par) {
+    g.globalAlpha = alpha; g.fillStyle = col;
+    for (var y = 0; y < 32; y++) { var hw = rowHW(y); for (var x = -hw + ((y + par) & 1) * 2; x < hw; x += 4) g.fillRect(cx + x, cy + y, 2, 1); }
+    g.globalAlpha = 1;
+  }
 
   // laut dalam: gradasi gelap di tepi dunia
   var grad = g.createRadialGradient(W / 2, H / 2, 260, W / 2, H / 2, Math.hypot(W, H) / 2);
-  grad.addColorStop(0, 'rgba(0,70,130,0)');
-  grad.addColorStop(1, 'rgba(0,45,105,0.5)');
+  grad.addColorStop(0, 'rgba(0,70,130,0)'); grad.addColorStop(1, 'rgba(0,45,105,0.5)');
   g.fillStyle = grad; g.fillRect(0, 0, W, H);
 
-  // air dangkal (turquoise terang di sekitar pulau)
-  var shallow = mkCanvas(W, H), sc = shallow[0], sg = shallow[1];
-  var shallow2 = mkCanvas(W, H), sc2 = shallow2[0], sg2 = shallow2[1];
+  // gradasi air dangkal: 3 tingkat turquoise + dither di batas tingkat
+  function level(d) { return d <= 1.45 ? 3 : d <= 2.6 ? 2 : d <= 3.9 ? 1 : 0; }
+  var LV = [null, ['#2ec6dd', 0.42], ['#52dde7', 0.5], ['#9cf0e9', 0.55]];
+  var dm = new Float32Array(GRID * GRID);
   for (j = 0; j < GRID; j++) for (i = 0; i < GRID; i++) {
     if (T[j * GRID + i] !== WATER) continue;
-    var near1 = false, near3 = false;
-    for (var dj = -3; dj <= 3 && !near1; dj++) for (var di = -3; di <= 3; di++) {
-      if (isLand(at(i + di, j + dj))) {
-        near3 = true;
-        if (Math.abs(di) <= 1 && Math.abs(dj) <= 1) { near1 = true; break; }
-      }
-    }
-    if (near3) drawDiamond(sg, sx(i, j), sy(i, j), '#46d7e0');
-    if (near1) drawDiamond(sg2, sx(i, j), sy(i, j), '#a6f5ea');
+    var best = 9;
+    for (var dj = -5; dj <= 5; dj++) for (var di = -5; di <= 5; di++) if (isLand(at(i + di, j + dj))) best = Math.min(best, Math.hypot(di, dj));
+    dm[j * GRID + i] = best;
   }
-  g.globalAlpha = 0.5; g.drawImage(sc, 0, 0);
-  g.globalAlpha = 0.45; g.drawImage(sc2, 0, 0);
+  for (j = 0; j < GRID; j++) for (i = 0; i < GRID; i++) {
+    if (T[j * GRID + i] !== WATER) continue;
+    var d0 = dm[j * GRID + i], L = level(d0), cx0 = sx(i, j), cy0 = sy(i, j), par = (i + j) & 1;
+    if (L > 0) { g.globalAlpha = LV[L][1]; drawDiamond(g, cx0, cy0, LV[L][0]); g.globalAlpha = 1; }
+    var Lo = level(d0 + 0.55), Li = level(d0 - 0.55);
+    if (Lo !== L) { if (Lo > 0) dashFill(cx0, cy0, LV[Lo][0], LV[Lo][1], par); else dashFill(cx0, cy0, '#1fb3c8', 0.8, par); }
+    if (Li !== L && Li > 0) dashFill(cx0, cy0, LV[Li][0], LV[Li][1], par + 1);
+    if (d0 <= 1.05) { g.globalAlpha = 0.22; drawDiamond(g, cx0, cy0, '#eafff4'); g.globalAlpha = 1; }
+  }
+
+  // bayangan daratan & dermaga di atas air (jatuh ke kanan-bawah)
+  for (j = 0; j < GRID; j++) for (i = 0; i < GRID; i++) {
+    var tt0 = T[j * GRID + i];
+    if (tt0 === WATER) continue;
+    if (tt0 === DOCK) { g.globalAlpha = 0.3; drawDiamond(g, sx(i, j) + 10, sy(i, j) + 9, '#06456a'); }
+    else if (at(i + 1, j) === WATER || at(i, j + 1) === WATER) { g.globalAlpha = 0.2; drawDiamond(g, sx(i, j) + 9, sy(i, j) + 8, '#08577f'); }
+  }
   g.globalAlpha = 1;
 
+  function scatter(cx, top, which, cnt, cols, a, b, seed, w) {
+    var V = [[cx + 32, top + 16], [cx, top + 32], [cx - 32, top + 16], [cx, top]], A = V[which], B = V[(which + 1) % 4];
+    for (var q = 0; q < cnt; q++) {
+      var u = hash(a, b, seed + q), f = 0.04 + hash(a, b, seed + 50 + q) * 0.26;
+      var x = A[0] + (B[0] - A[0]) * u, y = A[1] + (B[1] - A[1]) * u;
+      x += (cx - x) * f; y += (top + 16 - y) * f;
+      px(g, Math.round(x), Math.round(y), w || 2, 1, cols[Math.floor(hash(a, b, seed + 100 + q) * cols.length)]);
+    }
+  }
+  function dockTop(cx, top, a, b) {
+    var plank = ['#c4955a', '#b88a52', '#cf9f62', '#ad7f4a'];
+    for (var r = 0; r < 32; r++) {
+      var hw = rowHW(r);
+      for (var x = -hw; x < hw; x++) {
+        var u = ((r / 16) + ((x + 0.5) / 32)) / 2; if (u < 0) u = 0; if (u > 0.999) u = 0.999;
+        var pu = Math.floor(u * 16), pl = pu >> 2, sub = pu & 3, col;
+        if (sub === 0) col = '#6b4824'; else if (sub === 1) col = '#e0b276'; else col = plank[Math.floor(hash(a, b, pl + 31) * 4)];
+        if (sub > 1 && hash(a * 64 + x, b * 64 + r, 5) < 0.035) col = '#8f6234';
+        g.fillStyle = col; g.fillRect(cx + x, top + r, 1, 1);
+      }
+    }
+  }
+
   // tile daratan, dari belakang ke depan
-  var grassCols = ['#62c24a', '#55b43f', '#72d055', '#4aa337'];
-  var sandCols = ['#f4e4b4', '#ead7a0', '#fff1c8', '#e4cf96'];
+  var grassCols = ['#5fc04a', '#58b946', '#67c94f', '#54b244'];
+  var sandCols = ['#f6e7b8', '#ecd9a3', '#fff3cc', '#e6d19a'];
+  var flowerCols = ['#ff7aa8', '#ffe36a', '#ffffff', '#9ad0ff', '#ff9a4a'];
   for (var s = 0; s <= 2 * GRID - 2; s++) {
     for (i = Math.max(0, s - GRID + 1); i <= Math.min(s, GRID - 1); i++) {
       j = s - i;
@@ -380,7 +773,8 @@ function makeGround(map) {
       if (t === WATER) continue;
       var h = t === DOCK ? ELEV_DOCK : ELEV_LAND;
       var cx = sx(i, j), cy = sy(i, j), top = cy - h;
-      var nR = at(i + 1, j), nL = at(i, j + 1), k;
+      var nbr = [at(i + 1, j), at(i, j + 1), at(i - 1, j), at(i, j - 1)];
+      var nR = nbr[0], nL = nbr[1];
       var sideR = t === GRASS ? '#8c6a3c' : t === SAND ? '#dcc78f' : '#6b4a26';
       var sideL = t === GRASS ? '#6f5230' : t === SAND ? '#c4ad74' : '#4f3719';
 
@@ -388,15 +782,19 @@ function makeGround(map) {
         for (k = 0; k < 32; k++) {
           var yy = top + 31 - (k >> 1);
           px(g, cx + k, yy, 1, h + 1, sideR);
-          px(g, cx + k, yy, 1, 1, t === GRASS ? '#3f9a35' : '#fff2c9');                  // bibir tebing
-          if (k % 7 === 2) px(g, cx + k, yy + h, 3, 1, 'rgba(255,255,255,0.85)');       // buih
+          px(g, cx + k, yy, 1, 1, t === GRASS ? '#3f9a35' : t === SAND ? '#fff2c9' : '#d9a96a');
+          if (t !== DOCK && k % 5 === 1) px(g, cx + k, yy + 3, 1, 1, t === GRASS ? '#6e5230' : '#c9b27a');
+          if (t === DOCK && k % 8 === 0) px(g, cx + k, yy, 1, h + 1, '#4f3719');
+          if (k % 7 === 2) px(g, cx + k, yy + h, 3, 1, 'rgba(255,255,255,0.85)');
         }
       }
       if (!isLand(nL)) {
         for (k = 0; k < 32; k++) {
           var yl = top + 31 - (k >> 1);
           px(g, cx - 1 - k, yl, 1, h + 1, sideL);
-          px(g, cx - 1 - k, yl, 1, 1, t === GRASS ? '#2f7f2c' : '#f3e2b0');
+          px(g, cx - 1 - k, yl, 1, 1, t === GRASS ? '#2f7f2c' : t === SAND ? '#f3e2b0' : '#a87a46');
+          if (t !== DOCK && k % 5 === 3) px(g, cx - 1 - k, yl + 3, 1, 1, t === GRASS ? '#523a22' : '#ad9660');
+          if (t === DOCK && k % 8 === 0) px(g, cx - 1 - k, yl, 1, h + 1, '#35250f');
           if (k % 7 === 4) px(g, cx - 3 - k, yl + h, 3, 1, 'rgba(255,255,255,0.7)');
         }
       }
@@ -405,76 +803,75 @@ function makeGround(map) {
       var base, cols, wet = false;
       if (t === GRASS) { base = grassCols[0]; cols = grassCols; }
       else if (t === SAND) {
-        wet = at(i + 1, j) === WATER || at(i - 1, j) === WATER || at(i, j + 1) === WATER || at(i, j - 1) === WATER;
+        wet = nbr[0] === WATER || nbr[1] === WATER || nbr[2] === WATER || nbr[3] === WATER;
         base = wet ? '#e6d3a0' : sandCols[0]; cols = wet ? ['#e6d3a0', '#dcc58c', '#efdeb0'] : sandCols;
       } else { base = '#b88a52'; cols = ['#b88a52', '#a87a46']; }
-      if (t !== DOCK) {                                   // bercak warna supaya tidak datar
-        var pv = hash(i >> 1, j >> 1, 5) * 0.65 + hash(i, j, 6) * 0.35;
+      if (t !== DOCK) {
+        var pv = hash(i >> 1, j >> 1, 5) * 0.35 + hash(i, j, 6) * 0.65;
         if (t === GRASS) base = grassCols[Math.min(3, Math.floor(pv * 4))];
         else if (!wet) base = sandCols[Math.min(3, Math.floor(pv * 4))];
       }
       var cob = (t === GRASS && onPath(i, j));
-      drawDiamond(g, cx, top, cob ? '#b3ae9d' : base);
-      if (cob) {                                          // jalan batu
-        for (var rr3 = 2; rr3 < 29; rr3 += 4) {
-          var hwr = Math.min(rowHW(rr3), rowHW(rr3 + 2)) - 3, off = ((rr3 >> 2) & 1) * 4 + Math.floor(hash(i, j, rr3) * 3);
-          for (var xx3 = -hwr + off; xx3 + 6 <= hwr; xx3 += 8) {
-            px(g, cx + xx3, top + rr3, 6, 3, hash(i + xx3, j, rr3) < 0.5 ? '#dcd7c7' : '#cfcab9');
-            px(g, cx + xx3, top + rr3, 6, 1, '#f1eddf'); px(g, cx + xx3, top + rr3 + 2, 6, 1, '#a39e8c');
+      if (t === DOCK) dockTop(cx, top, i, j);
+      else drawDiamond(g, cx, top, cob ? '#b3ae9d' : base);
+      if (cob) {                                          // jalan batu pipih (flagstone) hangat
+        drawDiamond(g, cx, top, '#a89878');
+        for (var rr3 = 1; rr3 < 30; rr3 += 5) {
+          var hwr = Math.min(rowHW(rr3), rowHW(rr3 + 3)) - 2, off = ((rr3 / 5 | 0) & 1) * 5 + Math.floor(hash(i, j, rr3) * 3);
+          for (var xx3 = -hwr + off; xx3 + 8 <= hwr; xx3 += 10) {
+            var sc = hash(i + xx3, j, rr3);
+            px(g, cx + xx3, top + rr3, 8, 4, sc < 0.33 ? '#dccba4' : sc < 0.66 ? '#d2c19a' : '#e3d4af');
+            px(g, cx + xx3 + 1, top + rr3, 6, 1, '#f3e8c8'); px(g, cx + xx3, top + rr3 + 3, 8, 1, '#b4a37e'); px(g, cx + xx3 + 7, top + rr3 + 1, 1, 2, '#b4a37e');
           }
         }
-      }
-
-      if (t === DOCK) {
-        // papan kayu searah sumbu i
-        var tt;
-        for (tt = 8; tt < 32; tt += 8) {
-          for (k = 0; k < 32; k++) px(g, cx + k - tt, top + ((k + tt) >> 1), 1, 1, '#7a5530');
-        }
-        for (var q = 0; q < 8; q++) {
-          var r2 = 2 + Math.floor(hash(i, j, q) * 27), hw2 = rowHW(r2);
-          px(g, cx - hw2 + 2 + Math.floor(hash(i, j, q + 9) * (hw2 * 2 - 6)), top + r2, 2, 1, cols[1]);
-        }
-      } else if (!cob) {
-        for (var n = 0; n < 9; n++) {
+      } else if (t !== DOCK) {
+        var ccol;
+        for (n = 0; n < 11; n++) {
           var rr = 2 + Math.floor(hash(i, j, n) * 27), hw = rowHW(rr);
           var xx = cx - hw + 2 + Math.floor(hash(i, j, n + 20) * (hw * 2 - 6));
           px(g, xx, top + rr, 2, 1, cols[1 + Math.floor(hash(i, j, n + 40) * (cols.length - 1))]);
         }
-        if (t === GRASS && hash(i, j, 77) < 0.45) {            // rumput kecil
-          var gr = 9 + Math.floor(hash(i, j, 78) * 12), gh = rowHW(gr), gx2 = cx + Math.floor((hash(i, j, 79) - 0.5) * gh);
-          px(g, gx2, top + gr, 1, 1, '#2f8a34'); px(g, gx2 - 1, top + gr - 1, 1, 1, '#2f8a34'); px(g, gx2 + 1, top + gr - 1, 1, 1, '#2f8a34');
-        }
-        if (t === GRASS) {                                     // rumput lebih rapat + bercak cahaya/bayangan
-          for (var tf = 0; tf < 4; tf++) if (hash(i, j, 200 + tf) < 0.7) {
+        if (t === GRASS) {
+          for (var tf = 0; tf < 5; tf++) if (hash(i, j, 200 + tf) < 0.72) {
             var tr = 6 + Math.floor(hash(i, j, 210 + tf) * 17), th2 = rowHW(tr), tx2 = cx + Math.floor((hash(i, j, 220 + tf) - 0.5) * (th2 - 4));
             var dark = hash(i, j, 230 + tf) < 0.5;
-            px(g, tx2, top + tr - 2, 1, 3, dark ? '#2f8a34' : '#8fe06a');
-            px(g, tx2 + 2, top + tr - 1, 1, 2, dark ? '#3b9a3c' : '#a6ee7c');
-            px(g, tx2 - 2, top + tr - 1, 1, 2, dark ? '#3b9a3c' : '#7fd35e');
+            px(g, tx2, top + tr - 3, 1, 4, dark ? '#2f8a34' : '#9aea72'); px(g, tx2 + 2, top + tr - 2, 1, 3, dark ? '#3b9a3c' : '#b4f48a'); px(g, tx2 - 2, top + tr - 2, 1, 3, dark ? '#3b9a3c' : '#80d85e');
+            px(g, tx2, top + tr + 1, 3, 1, 'rgba(20,80,40,0.35)');
           }
-          if (hash(i, j, 240) < 0.35) { var dr = 8 + Math.floor(hash(i, j, 241) * 14); px(g, cx - 6 + Math.floor(hash(i, j, 242) * 10), top + dr, 5, 1, 'rgba(20,90,40,0.28)'); }
-          if (hash(i, j, 243) < 0.3) { var lr = 6 + Math.floor(hash(i, j, 244) * 14); px(g, cx - 8 + Math.floor(hash(i, j, 245) * 14), top + lr, 4, 1, 'rgba(220,255,160,0.25)'); }
+          if (hash(i, j, 240) < 0.35) { var dr = 8 + Math.floor(hash(i, j, 241) * 14); px(g, cx - 6 + Math.floor(hash(i, j, 242) * 10), top + dr, 6, 1, 'rgba(20,90,40,0.28)'); px(g, cx - 4 + Math.floor(hash(i, j, 242) * 10), top + dr + 1, 3, 1, 'rgba(20,90,40,0.2)'); }
+          if (hash(i, j, 243) < 0.32) { var lr = 6 + Math.floor(hash(i, j, 244) * 14); px(g, cx - 8 + Math.floor(hash(i, j, 245) * 14), top + lr, 5, 1, 'rgba(230,255,170,0.28)'); }
+          if (hash(i, j, 260) < 0.12) { var cr = 10 + Math.floor(hash(i, j, 261) * 10), cxx = cx + Math.floor((hash(i, j, 262) - 0.5) * 18); px(g, cxx, top + cr, 2, 1, '#2f9a4a'); px(g, cxx + 1, top + cr - 1, 2, 1, '#3cb25a'); px(g, cxx - 1, top + cr - 1, 2, 1, '#3cb25a'); }
+          if (hash(i, j, 90) < 0.16) {
+            var fr = 9 + Math.floor(hash(i, j, 91) * 12), fxx = cx + Math.floor((hash(i, j, 92) - 0.5) * 22), fc = flowerCols[Math.floor(hash(i, j, 93) * 5)];
+            px(g, fxx, top + fr, 2, 2, fc); px(g, fxx, top + fr, 1, 1, '#ffffff'); px(g, fxx + 1, top + fr + 2, 1, 1, '#2f8a34');
+            if (hash(i, j, 94) < 0.5) { px(g, fxx + 4, top + fr + 1, 2, 2, fc); px(g, fxx + 5, top + fr + 3, 1, 1, '#2f8a34'); }
+          }
+          if (hash(i, j, 96) < 0.05) { var sr = 10 + Math.floor(hash(i, j, 97) * 10), sxx = cx + Math.floor((hash(i, j, 98) - 0.5) * 18); px(g, sxx, top + sr, 4, 3, '#8c96a0'); px(g, sxx, top + sr, 3, 1, '#c3ccd5'); px(g, sxx + 1, top + sr + 3, 4, 1, 'rgba(20,60,40,0.3)'); }
+          if (hash(i, j, 99) < 0.03) { var kr = 10 + Math.floor(hash(i, j, 100) * 9), kxx = cx + Math.floor((hash(i, j, 101) - 0.5) * 16); px(g, kxx, top + kr, 4, 3, '#6b4423'); px(g, kxx + 1, top + kr, 2, 1, '#b98a52'); }
         }
-        if (t === SAND) {                                      // riak pasir + kerikil
-          if (hash(i, j, 250) < 0.5) { var rr2 = 8 + Math.floor(hash(i, j, 251) * 14); px(g, cx - 9 + Math.floor(hash(i, j, 252) * 12), top + rr2, 6, 1, 'rgba(190,160,100,0.45)'); px(g, cx - 7 + Math.floor(hash(i, j, 252) * 12), top + rr2 + 1, 3, 1, 'rgba(255,250,225,0.5)'); }
-          if (hash(i, j, 253) < 0.14) { var pr = 9 + Math.floor(hash(i, j, 254) * 12), pxx = cx - 8 + Math.floor(hash(i, j, 255) * 14); px(g, pxx, top + pr, 3, 2, '#a89c82'); px(g, pxx, top + pr, 2, 1, '#cfc4a8'); }
+        if (t === SAND) {
+          if (hash(i, j, 250) < 0.55) { var rr2 = 8 + Math.floor(hash(i, j, 251) * 14), rx2 = cx - 9 + Math.floor(hash(i, j, 252) * 12); px(g, rx2, top + rr2, 7, 1, 'rgba(190,160,100,0.5)'); px(g, rx2 + 2, top + rr2 + 1, 4, 1, 'rgba(255,252,230,0.6)'); }
+          if (hash(i, j, 253) < 0.16) { var pr = 9 + Math.floor(hash(i, j, 254) * 12), pxx = cx - 8 + Math.floor(hash(i, j, 255) * 14); px(g, pxx, top + pr, 3, 2, '#a89c82'); px(g, pxx, top + pr, 2, 1, '#d6ccb0'); px(g, pxx + 1, top + pr + 2, 3, 1, 'rgba(120,100,60,0.35)'); }
+          if (hash(i, j, 270) < 0.1) { var shr = 10 + Math.floor(hash(i, j, 271) * 10), shx = cx - 6 + Math.floor(hash(i, j, 272) * 12); px(g, shx, top + shr, 3, 2, '#ffffff'); px(g, shx, top + shr, 1, 1, '#f7c1c9'); px(g, shx + 1, top + shr + 2, 3, 1, 'rgba(140,110,70,0.3)'); }
+          if (hash(i, j, 273) < 0.035) { var str = 10 + Math.floor(hash(i, j, 274) * 9), stx = cx - 5 + Math.floor(hash(i, j, 275) * 10); px(g, stx + 2, top + str - 2, 1, 2, '#ff7a4a'); px(g, stx, top + str, 5, 1, '#ff7a4a'); px(g, stx + 1, top + str + 1, 3, 1, '#ff9a6a'); px(g, stx + 2, top + str, 1, 1, '#ffd0a0'); }
+          if (hash(i, j, 276) < 0.03) { var dw = 10 + Math.floor(hash(i, j, 277) * 8), dx = cx - 8 + Math.floor(hash(i, j, 278) * 8); px(g, dx, top + dw, 9, 2, '#8a6a42'); px(g, dx, top + dw, 9, 1, '#b99468'); px(g, dx + 2, top + dw - 1, 2, 1, '#8a6a42'); px(g, dx + 1, top + dw + 2, 9, 1, 'rgba(120,90,50,0.35)'); }
+          if (wet && hash(i, j, 280) < 0.22) { var wr = 8 + Math.floor(hash(i, j, 281) * 12), wxx = cx - 6 + Math.floor(hash(i, j, 282) * 12); px(g, wxx, top + wr, 5, 1, '#3f7a3a'); px(g, wxx + 1, top + wr - 1, 3, 1, '#5aa04a'); }
         }
-        if (t === GRASS && hash(i, j, 90) < 0.1) {             // bunga kecil
-          var fr = 10 + Math.floor(hash(i, j, 91) * 10);
-          px(g, cx + Math.floor((hash(i, j, 92) - 0.5) * 20), top + fr, 2, 2, hash(i, j, 93) < 0.5 ? '#ff7aa8' : '#ffe36a');
-        }
-        if (t === SAND && hash(i, j, 95) < 0.12) {             // kerang
-          var sr = 10 + Math.floor(hash(i, j, 96) * 10);
-          px(g, cx + Math.floor((hash(i, j, 97) - 0.5) * 20), top + sr, 2, 1, hash(i, j, 98) < 0.5 ? '#ffffff' : '#f7c1c9');
+        // peralihan rumput <-> pasir (dither di tepi) dan tepi basah di pantai
+        for (var wch = 0; wch < 4; wch++) {
+          var nt = nbr[wch];
+          if (t === GRASS && nt === SAND) scatter(cx, top, wch, 12, ['#f1e2b0', '#e6d19a', '#fff3cc'], i, j, 300 + wch * 10, 2);
+          else if (t === SAND && nt === GRASS) scatter(cx, top, wch, 10, ['#5fc04a', '#47a03a', '#6fd055'], i, j, 340 + wch * 10, 1);
+          else if (t === SAND && nt === WATER && wch >= 2) { scatter(cx, top, wch, 12, ['#d6c28e', '#cdb780'], i, j, 380 + wch * 10, 2); scatter(cx, top, wch, 5, ['#fffbe8', '#ffffff'], i, j, 420 + wch * 10, 1); }
         }
       }
 
       // tiang dermaga
       if (t === DOCK) {
         var postAt = function (vx, vy) {
-          px(g, vx - 2, vy - h - 5, 4, h + 12, '#5a3b1c');
-          px(g, vx - 2, vy - h - 5, 4, 2, '#8a5d30');
+          px(g, vx - 2, vy - h - 6, 4, h + 13, '#5a3b1c'); px(g, vx - 2, vy - h - 6, 1, h + 13, '#8a5d30');
+          px(g, vx - 3, vy - h - 7, 6, 2, '#a8763c'); px(g, vx - 3, vy - h - 7, 6, 1, '#d9a96a');
+          px(g, vx - 2, vy - h - 3, 4, 1, '#e0c88e'); px(g, vx - 2, vy - h - 2, 4, 1, '#b89a60');
         };
         if (!(at(i, j + 1) === DOCK) && i % 2 === 0) postAt(cx - 31, cy + 16);
         if (!(at(i + 1, j) === DOCK) && j % 2 === 1) postAt(cx + 31, cy + 16);
@@ -484,7 +881,7 @@ function makeGround(map) {
   }
 
   // penanda area spawn (cincin batu)
-  var spCx = sx(C, C) - 0, spCy = sy(C, C) + 16 - ELEV_LAND;
+  var spCx = sx(C, C), spCy = sy(C, C) + 16 - ELEV_LAND;
   for (var a = 0; a < Math.PI * 2; a += 0.09) {
     var ex = Math.round(spCx + Math.cos(a) * 20), ey = Math.round(spCy + Math.sin(a) * 10);
     px(g, ex - 1, ey, 3, 2, (Math.floor(a / 0.09) % 3 === 0) ? '#d9c68e' : '#bfae79');
@@ -493,8 +890,8 @@ function makeGround(map) {
 }
 
 /* ----- karakter pixel art ----- */
-var PAL_PLAYER = { skin: '#f2c28b', hair: '#17171b', hairHi: '#3d3e48', shirt: '#f6f7f9', shirt2: '#d5dbe3', pants: '#2a2c33', pantsD: '#18191e', shoe: '#0c0c0e', belt: '#0c0c0e', hat: 'none' };
-var PAL_NPC = { skin: '#c98a5a', hair: '#2e2e2e', shirt: '#1fb5a5', shirt2: '#e8fffb', pants: '#7a5230', pantsD: '#5f3f22', shoe: '#2a1d12', hat: 'cap', apron: true };
+var PAL_PLAYER = { shirtD: '#bdc6d2', skin: '#f2c28b', hair: '#17171b', hairHi: '#3d3e48', shirt: '#f6f7f9', shirt2: '#d5dbe3', pants: '#2a2c33', pantsD: '#18191e', shoe: '#0c0c0e', belt: '#0c0c0e', hat: 'none' };
+var PAL_NPC = { shirtD: '#12877c', skin: '#c98a5a', hair: '#2e2e2e', shirt: '#1fb5a5', shirt2: '#e8fffb', pants: '#7a5230', pantsD: '#5f3f22', shoe: '#2a1d12', hat: 'cap', apron: true };
 
 function drawChar(g, ox, oy, o) {
   var S = 2, p = o.pal, by = o.by | 0, ph = o.phase || 0, walk = !!o.walk, v = o.view, sd = o.side | 0;
@@ -510,6 +907,7 @@ function drawChar(g, ox, oy, o) {
     R(7 + L[0], 16 + L[2], 2, 6 - L[2], p.pants);  R(7 + L[0], 22 - L[2], 3, 2, p.shoe);
     R(5, 15, 6, 2, p.pants);
     R(5, 9 + by, 6, 6, p.shirt);
+    if (p.shirtD) { R(10, 9 + by, 1, 6, p.shirtD); R(5, 14 + by, 6, 1, p.shirtD); }
     R(6, 11 + by, 1, 1, p.shirt2); R(6, 13 + by, 1, 1, p.shirt2);
     if (p.apron) R(8, 11 + by, 2, 5, '#f5f5f5');
     R(7 + al, 10 + by, 2, 2, p.shirt); R(7 + al, 12 + by, 2, 3, p.skin);
@@ -530,6 +928,7 @@ function drawChar(g, ox, oy, o) {
     R(8, 16 + lf[1], 3, 6 - lf[1], p.pantsD); R(8, 22 - lf[1], 3, 2, p.shoe);
     R(4, 15, 8, 2, p.pants);
     R(4, 9 + by, 8, 6, p.shirt);
+    if (p.shirtD) { R(11, 9 + by, 1, 6, p.shirtD); R(4, 14 + by, 8, 1, p.shirtD); R(4, 9 + by, 8, 1, p.shirt2); }
     if (v === 'front') {
       R(6, 11 + by, 1, 1, p.shirt2); R(9, 12 + by, 1, 1, p.shirt2); R(7, 13 + by, 1, 1, p.shirt2);
       if (p.apron) R(5, 11 + by, 6, 5, '#f5f5f5');
@@ -591,104 +990,6 @@ function makeNpcSheet() {
 }
 
 /* ----- objek dunia ----- */
-function makePalm() {
-  var S = 2, LW = 46, LH = 60, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 20, 56, 10, 2, 'rgba(0,0,0,0.22)', S);
-  var bx = 20, bY = 56, top = 18, y, x, cx = 0, cy = 0;
-  for (y = bY; y >= top; y--) {
-    var t = (bY - y) / (bY - top);
-    x = Math.round(bx + 7 * t * t + 2 * t);
-    var wdt = y > bY - 8 ? 4 : 3;
-    var ring = ((bY - y) % 4 === 0);
-    px(g, (x - 1) * S, y * S, wdt * S, S, ring ? '#6b4a2b' : '#9a6b3c');
-    px(g, (x - 1) * S, y * S, S, S, ring ? '#5a3c22' : '#b98a52');
-    cx = x; cy = y;
-  }
-  var greens = ['#1f7a33', '#2f9a44', '#46b957'];
-  var N = 7;
-  for (var k = 0; k < N; k++) {
-    var a = k * (Math.PI * 2 / N) + 0.35, dx = Math.cos(a), dy = Math.sin(a);
-    for (var tt = 0; tt <= 15; tt += 0.5) {
-      var lx = Math.round(cx + dx * tt * 1.15), ly = Math.round(cy + dy * tt * 0.35 + tt * tt * 0.05 - (tt < 3 ? 1 : 0));
-      var th = tt < 9 ? 2 : 1;
-      var col = tt < 5 ? greens[1] : (dy < 0 ? greens[2] : greens[0]);
-      px(g, lx * S, ly * S, th * S, th * S, col);
-      px(g, lx * S, (ly + th) * S, S, S, greens[0]);
-    }
-  }
-  for (var k2 = 0; k2 < 5; k2++) {                         // daun lapis kedua (lebih rimbun)
-    var a2 = k2 * (Math.PI * 2 / 5) + 0.9, dx2 = Math.cos(a2), dy2 = Math.sin(a2);
-    for (var t2 = 2; t2 <= 11; t2 += 0.5) {
-      var lx2 = Math.round(cx + dx2 * t2 * 1.1), ly2 = Math.round(cy - 1 + dy2 * t2 * 0.3 + t2 * t2 * 0.06);
-      px(g, lx2 * S, ly2 * S, S, S, t2 > 8 ? greens[0] : greens[2]);
-    }
-  }
-  for (var y2 = top; y2 < bY; y2 += 3) px(g, Math.round(bx + 7 * Math.pow((bY - y2) / (bY - top), 2) + 2 * ((bY - y2) / (bY - top))) * S + S, y2 * S, S, S, '#c99a62');   // sorot batang
-  px(g, (cx - 2) * S, (cy + 2) * S, 2 * S, 2 * S, '#5a3a1e');
-  px(g, (cx + 1) * S, (cy + 3) * S, 2 * S, 2 * S, '#4a2f18');
-  px(g, (cx - 1) * S, (cy + 4) * S, 2 * S, 2 * S, '#6b4526');
-  return { canvas: c, ox: bx / LW, oy: 57 / LH };
-}
-function makeBush() {
-  var S = 2, LW = 22, LH = 16, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 11, 13, 9, 2, 'rgba(0,0,0,0.2)', S);
-  disc(g, 7, 9, 5, '#2b8737', S); disc(g, 15, 9, 5, '#2b8737', S); disc(g, 11, 6, 5, '#37a447', S);
-  disc(g, 9, 5, 2, '#5fcf68', S); disc(g, 14, 8, 1, '#4fbf5a', S);
-  px(g, 6 * S, 9 * S, S, S, '#ff7aa8'); px(g, 12 * S, 4 * S, S, S, '#ffe36a'); px(g, 16 * S, 10 * S, S, S, '#ff7aa8');
-  return { canvas: c, ox: 0.5, oy: 14 / LH };
-}
-function makeRock(v) {
-  var S = 2, LW = 20, LH = 14, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 10, 11, 8, 2, 'rgba(0,0,0,0.2)', S);
-  if (v === 0) {
-    ell(g, 10, 8, 7, 5, '#7c8894', S); ell(g, 9, 7, 5, 3, '#9aa6b2', S); ell(g, 8, 5, 2, 1, '#c5cdd5', S); ell(g, 15, 10, 3, 2, '#6b7682', S);
-  } else {
-    ell(g, 9, 9, 5, 3, '#7c8894', S); ell(g, 8, 8, 3, 2, '#9aa6b2', S); ell(g, 15, 10, 3, 2, '#6b7682', S); ell(g, 14, 9, 1, 1, '#bcc5ce', S);
-  }
-  return { canvas: c, ox: 0.5, oy: 12 / LH };
-}
-function makeStall() {
-  var S = 2, LW = 48, LH = 44, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x;
-  ell(g, 24, 41, 22, 3, 'rgba(0,0,0,0.22)', S);
-  px(g, 4 * S, 10 * S, 3 * S, 30 * S, '#7a4e24'); px(g, 41 * S, 10 * S, 3 * S, 30 * S, '#7a4e24');
-  px(g, 7 * S, 10 * S, 34 * S, 16 * S, '#c9ad7c');
-  px(g, 4 * S, 26 * S, 40 * S, 14 * S, '#a9743c');
-  for (x = 4; x < 44; x += 5) px(g, x * S, 26 * S, S, 14 * S, '#8b5a2b');
-  px(g, 2 * S, 24 * S, 44 * S, 3 * S, '#d9a066');
-  ell(g, 10, 22, 3, 1, '#8ecae6', S); ell(g, 17, 22, 3, 1, '#ffb703', S); ell(g, 33, 22, 3, 1, '#e76f51', S); ell(g, 39, 22, 2, 1, '#8ecae6', S);
-  for (x = 0; x < 48; x++) {
-    var col = (Math.floor(x / 4) % 2) ? '#e63946' : '#f8f9fa';
-    px(g, x * S, 6 * S, S, 8 * S, col);
-    px(g, x * S, 14 * S, S, ((Math.floor(x / 2) % 2) ? 2 : 1) * S, col);
-  }
-  px(g, 0, 4 * S, 48 * S, 2 * S, '#9d0208');
-  px(g, 14 * S, 29 * S, 20 * S, 9 * S, '#5b3a1a');
-  g.fillStyle = '#ffffff'; g.font = 'bold ' + (8 * S) + 'px monospace'; g.textAlign = 'center';
-  g.fillText('IKAN', 24 * S, 36.5 * S);
-  return { canvas: c, ox: 0.5, oy: 41 / LH };
-}
-function makeWaves(kind) {
-  var cv = mkCanvas(128, 64), c = cv[0], g = cv[1], R = rng(kind === 1 ? 11 : 29), n, w, x, y;
-  if (kind === 1) {
-    px(g, 0, 0, 128, 64, '#1fb3c8');
-    for (n = 0; n < 16; n++) { w = 8 + Math.floor(R() * 12); x = Math.floor(R() * (128 - w)); y = Math.floor(R() * 62); px(g, x, y, w, 2, '#18a0b8'); }
-    for (n = 0; n < 14; n++) { w = 6 + Math.floor(R() * 10); x = Math.floor(R() * (128 - w)); y = Math.floor(R() * 62); px(g, x, y, w, 2, '#4fd0e0'); }
-  } else {
-    for (n = 0; n < 12; n++) { w = 6 + Math.floor(R() * 10); x = Math.floor(R() * (128 - w)); y = Math.floor(R() * 62); px(g, x, y, w, 2, 'rgba(255,255,255,0.55)'); }
-  }
-  return c;
-}
-function makeCloud() {
-  var cv = mkCanvas(256, 128), c = cv[0], g = cv[1];
-  g.imageSmoothingEnabled = true;
-  [[90, 70, 60, 36], [150, 60, 66, 40], [200, 74, 44, 28], [120, 84, 70, 30]].forEach(function (b) {
-    var gr = g.createRadialGradient(b[0], b[1], 2, b[0], b[1], b[2]);
-    gr.addColorStop(0, 'rgba(0,25,50,0.9)'); gr.addColorStop(1, 'rgba(0,25,50,0)');
-    g.fillStyle = gr; g.save(); g.translate(b[0], b[1]); g.scale(1, b[3] / b[2]); g.translate(-b[0], -b[1]);
-    g.beginPath(); g.arc(b[0], b[1], b[2], 0, 6.2832); g.fill(); g.restore();
-  });
-  return c;
-}
 function makeFoam(map) {
   var T = map.T, cv = mkCanvas(W, H), c = cv[0], g = cv[1];
   function land(a, b) { return a >= 0 && b >= 0 && a < GRID && b < GRID && T[b * GRID + a] !== WATER; }
@@ -698,71 +999,6 @@ function makeFoam(map) {
     if (land(i - 1, j)) for (k = 0; k < 32; k++) { if ((k + i) % 9 < 6) px(g, cx - 32 + k, cy + 16 - (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
     if (land(i, j - 1)) for (k = 0; k < 32; k++) { if ((k + j) % 9 < 6) px(g, cx + k, cy + (k >> 1) + 1, 1, 2, 'rgba(255,255,255,0.95)'); }
   }
-  return c;
-}
-function makeTree() {
-  var S = 2, LW = 44, LH = 46, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], r = rng(31), k, a, d;
-  ell(g, 22, 42, 15, 3, 'rgba(0,0,0,0.22)', S);
-  px(g, 19 * S, 27 * S, 6 * S, 14 * S, '#7a4e24'); px(g, 19 * S, 27 * S, 2 * S, 14 * S, '#a06f3c'); px(g, 23 * S, 27 * S, 2 * S, 14 * S, '#5a3a1e');
-  px(g, 17 * S, 39 * S, 10 * S, 2 * S, '#6b4526');
-  [[14, 21, 10], [30, 21, 10], [22, 12, 11], [22, 22, 11], [22, 17, 13]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#256b31', S); });
-  ell(g, 22, 29, 13, 3, '#1b5a28', S);
-  [[13, 18, 8], [29, 18, 8], [21, 10, 9], [21, 19, 10]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#3ba246', S); });
-  [[11, 15, 4], [19, 7, 5], [26, 12, 4], [16, 12, 3], [30, 15, 3]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#68cd62', S); });
-  for (k = 0; k < 46; k++) { a = r() * 6.283; d = Math.sqrt(r()) * 14; px(g, Math.round(22 + Math.cos(a) * d) * S, Math.round(18 + Math.sin(a) * d * 0.95) * S, S, S, Math.sin(a) < 0 ? '#9be883' : '#1d5a2a'); }
-  for (k = 0; k < 11; k++) {
-    a = r() * 6.283; d = 4 + r() * 9; var fx = Math.round(22 + Math.cos(a) * d), fy = Math.round(18 + Math.sin(a) * d * 0.85);
-    px(g, fx * S, fy * S, 2 * S, 2 * S, r() < 0.5 ? '#ef7a1f' : '#e5392b'); px(g, fx * S, fy * S, S, S, '#ffd2a0');
-  }
-  return { canvas: c, ox: 0.5, oy: 41 / LH };
-}
-function makeLamp() {
-  var S = 2, LW = 14, LH = 40, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 7, 37, 6, 2, 'rgba(0,0,0,0.25)', S);
-  px(g, 4 * S, 34 * S, 6 * S, 3 * S, '#2b2f36'); px(g, 5 * S, 33 * S, 4 * S, S, '#59606b');
-  px(g, 6 * S, 11 * S, 2 * S, 23 * S, '#3b4048'); px(g, 6 * S, 11 * S, S, 23 * S, '#5d6470');
-  px(g, 3 * S, 3 * S, 8 * S, 2 * S, '#2b2f36'); px(g, 5 * S, 1 * S, 4 * S, 2 * S, '#2b2f36'); px(g, 6 * S, 0, 2 * S, S, '#59606b');
-  px(g, 4 * S, 5 * S, 6 * S, 6 * S, '#ffd95a'); px(g, 5 * S, 6 * S, 4 * S, 4 * S, '#fff7c9');
-  px(g, 3 * S, 5 * S, S, 6 * S, '#2b2f36'); px(g, 10 * S, 5 * S, S, 6 * S, '#2b2f36'); px(g, 3 * S, 11 * S, 8 * S, S, '#2b2f36');
-  return { canvas: c, ox: 0.5, oy: 37 / LH };
-}
-function makeSign() {
-  var S = 2, LW = 32, LH = 38, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 16, 35, 8, 2, 'rgba(0,0,0,0.25)', S);
-  px(g, 14 * S, 7 * S, 4 * S, 28 * S, '#7a4e24'); px(g, 14 * S, 7 * S, S, 28 * S, '#a06f3c'); px(g, 17 * S, 7 * S, S, 28 * S, '#5a3a1e');
-  px(g, 5 * S, 9 * S, 20 * S, 7 * S, '#d19b5d'); px(g, 25 * S, 10 * S, 2 * S, 5 * S, '#d19b5d'); px(g, 27 * S, 11 * S, S, 3 * S, '#d19b5d');
-  px(g, 5 * S, 9 * S, 20 * S, S, '#ecc388'); px(g, 5 * S, 15 * S, 20 * S, S, '#9a6a35');
-  px(g, 9 * S, 18 * S, 20 * S, 7 * S, '#bd8749'); px(g, 7 * S, 19 * S, 2 * S, 5 * S, '#bd8749'); px(g, 6 * S, 20 * S, S, 3 * S, '#bd8749');
-  px(g, 9 * S, 18 * S, 20 * S, S, '#dba765'); px(g, 9 * S, 24 * S, 20 * S, S, '#8a5c2d');
-  [[8, 12], [22, 12], [12, 21], [26, 21]].forEach(function (n) { px(g, n[0] * S, n[1] * S, S, S, '#4a3018'); });
-  return { canvas: c, ox: 0.5, oy: 35 / LH };
-}
-function makeReed() {
-  var S = 2, LW = 20, LH = 30, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 10, 27, 7, 2, 'rgba(0,0,0,0.18)', S);
-  [[5, 16, 0], [8, 22, 0], [11, 19, 1], [14, 14, 0], [10, 12, 0]].forEach(function (s_) {
-    var x = s_[0], h = s_[1];
-    px(g, x * S, (27 - h) * S, S, h * S, '#3f8a3a'); px(g, (x + 1) * S, (27 - h) * S + S * 2, S, (h - 2) * S, '#69bf58');
-    if (s_[2] !== undefined) { px(g, x * S - S, (27 - h) * S, 3 * S, 6 * S, '#6b3f1d'); px(g, x * S, (27 - h) * S, S, 6 * S, '#8f5a2c'); px(g, x * S, (26 - h) * S, S, S, '#c9a06a'); }
-  });
-  [[2, 24, -1], [16, 24, 1], [7, 25, -1], [12, 25, 1]].forEach(function (b) { px(g, b[0] * S, b[1] * S, S, 3 * S, '#4da545'); px(g, (b[0] + b[2]) * S, (b[1] - 2) * S, S, 2 * S, '#69bf58'); });
-  return { canvas: c, ox: 0.5, oy: 27 / LH };
-}
-function makePad(flower) {
-  var S = 2, LW = 18, LH = 10, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 9, 5, 7, 3, '#2c9444', S); ell(g, 9, 4, 6, 2, '#4cc05f', S); ell(g, 7, 4, 2, 1, '#8ee07a', S);
-  g.clearRect(10 * S, 5 * S, 7 * S, S);
-  if (flower) { px(g, 6 * S, 1 * S, 4 * S, 3 * S, '#ff86b0'); px(g, 7 * S, 0, 2 * S, S, '#ffb3cc'); px(g, 7 * S, 2 * S, 2 * S, S, '#fff3a0'); }
-  return { canvas: c, ox: 0.5, oy: 0.55 };
-}
-function makeFishShadow() {
-  var S = 2, cv = mkCanvas(44, 20), c = cv[0], g = cv[1];
-  ell(g, 9, 5, 8, 3, 'rgba(5,45,80,0.5)', S); px(g, 17 * S, 3 * S, 2 * S, 4 * S, 'rgba(5,45,80,0.5)'); px(g, 19 * S, 2 * S, 2 * S, 6 * S, 'rgba(5,45,80,0.5)');
-  return c;
-}
-function makeSparkle() {
-  var cv = mkCanvas(7, 7), c = cv[0], g = cv[1];
-  px(g, 3, 0, 1, 7, '#ffffff'); px(g, 0, 3, 7, 1, '#ffffff'); px(g, 2, 2, 3, 3, '#ffffff');
   return c;
 }
 function makeBobber() {
@@ -1139,28 +1375,35 @@ function createSceneClass() {
       this.textures.addCanvas('waves1', makeWaves(1));
       this.textures.addCanvas('waves2', makeWaves(2));
       this.textures.addCanvas('sparkle', makeSparkle());
+      this.textures.addCanvas('caustic', makeWaves(3));
+      this.textures.addCanvas('glow', makeGlow());
+      this.textures.addCanvas('shadow', makeShadowTex());
+      this.textures.addCanvas('flame', makeFlame());
       this.textures.addCanvas('cloud', makeCloud());
       this.textures.addCanvas('foam', makeFoam(M));
       this.textures.addCanvas('bobber', makeBobber());
       this.textures.addCanvas('ground', makeGround(M));
+      this.origins = {};
       var ps = this.textures.addCanvas('player', makePlayerSheet());
       for (var d = 0; d < 8; d++) for (var c = 0; c < 6; c++) ps.add(d + '_' + c, 0, c * 32, d * 48, 32, 48);
       var ns = this.textures.addCanvas('npc', makeNpcSheet());
       ns.add('i0', 0, 0, 0, 32, 48); ns.add('i1', 0, 32, 0, 32, 48);
-      var OL = '#0f2a2e', OLG = '#0c3320';
+      var OL = '#0f2a2e', OLG = '#0c3320', OLB = '#2a1408', OLW = '#175a30';
       var defs = {
-        palm: outlined(makePalm(), OLG), bush: outlined(makeBush(), OLG), rock0: outlined(makeRock(0), OL), rock1: outlined(makeRock(1), OL),
-        stall: outlined(makeStall(), '#2a1408'), tree: outlined(makeTree(), OLG), lamp: outlined(makeLamp(), '#14161a'),
-        sign: outlined(makeSign(), '#2a1408'), reed: outlined(makeReed(), OLG), pad0: outlined(makePad(0), '#175a30'), pad1: outlined(makePad(1), '#175a30')
+        palm0: outlined(makePalm(0), OLG), palm1: outlined(makePalm(1), OLG), bush0: outlined(makeBush(0), OLG), bush1: outlined(makeBush(1), OLG),
+        rock0: outlined(makeRock(0), OL), rock1: outlined(makeRock(1), OL), rock2: outlined(makeRock(2), OL), rock3: outlined(makeRock(3), OL),
+        stall: outlined(makeStall(), OLB), reed: outlined(makeReed(), OLG), pad0: outlined(makePad(0), OLW), pad1: outlined(makePad(1), OLW),
+        banana: outlined(makeBanana(), OLG), torch: outlined(makeTorch(), OLB), parasol: outlined(makeParasol(), '#0f3a4a'), towel: outlined(makeTowel(), '#5a1626'),
+        barrel: outlined(makeBarrel(), OLB), crate: outlined(makeCrate(), OLB), boat: outlined(makeBoat(), '#1a2a33'), coral: outlined(makeCoral(), '#4a1a3a')
       };
-      this.textures.addCanvas('fishsh', makeFishShadow());
-      this.origins = {};
       Object.keys(defs).forEach(function (k) { self.textures.addCanvas(k, defs[k].canvas); self.origins[k] = [defs[k].ox, defs[k].oy]; });
+      this.textures.addCanvas('fishsh', makeFishShadow());
       FISH.forEach(function (f) { self.textures.addCanvas('fish_' + f.id, makeFishCanvas(f)); });
 
       // laut (dua lapis gelombang bergerak) + daratan
       this.waves1 = this.add.tileSprite(0, 0, W, H, 'waves1').setOrigin(0, 0).setDepth(-100);
       this.waves2 = this.add.tileSprite(0, 0, W, H, 'waves2').setOrigin(0, 0).setDepth(-99).setAlpha(0.6);
+      this.waves3 = this.add.tileSprite(0, 0, W, H, 'caustic').setOrigin(0, 0).setDepth(-98).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
       this.add.image(0, 0, 'ground').setOrigin(0, 0).setDepth(-50);
 
       // buih ombak di tepi pantai (dua lapis, bergantian maju-mundur)
@@ -1171,7 +1414,7 @@ function createSceneClass() {
 
       // kilau air
       var R = rng(5), placed = 0, tries = 0;
-      while (placed < 90 && tries < 1200) {
+      while (placed < 60 && tries < 900) {
         tries++;
         var si = Math.floor(R() * GRID), sj = Math.floor(R() * GRID);
         if (this.T[sj * GRID + si] !== WATER) continue;
@@ -1181,38 +1424,51 @@ function createSceneClass() {
         placed++;
       }
 
-      // rintangan: pohon, semak, batu
+      // rintangan: pohon, semak, batu (posisi & tabrakan tetap, hanya tampilan yang berubah)
       M.obstacles.forEach(function (o) {
-        var key = o.kind === 'rock' ? 'rock' + o.v : o.kind;
+        var key = o.kind === 'rock' ? 'rock' + (o.v + (hash(o.i, o.j, 3) < 0.5 ? 2 : 0)) : o.kind + (o.kind === 'stall' ? '' : o.v);
         var p = self.gp(o.gx, o.gy, ELEV_LAND);
-        if (o.kind === 'tree') self.add.ellipse(p.x + 8, p.y, 62, 20, 0x0b3d14, 0.3).setDepth(-49);
-        if (o.kind === 'lamp') {
-          var glow = self.add.ellipse(p.x, p.y - 31, 46, 46, 0xffe28a, 0.2).setBlendMode(Phaser.BlendModes.ADD).setDepth(p.y + 1);
-          self.tweens.add({ targets: glow, alpha: { from: 0.12, to: 0.3 }, duration: 1400 + Math.random() * 600, yoyo: true, repeat: -1 });
-          self.add.ellipse(p.x, p.y, 70, 26, 0xffe28a, 0.1).setBlendMode(Phaser.BlendModes.ADD).setDepth(-48);
-        }
-        if (o.kind === 'palm') self.add.ellipse(p.x + 12, p.y + 1, 54, 18, 0x0b3d14, 0.28).setDepth(-49);
-        else if (o.kind === 'bush') self.add.ellipse(p.x + 2, p.y, 26, 9, 0x0b3d14, 0.25).setDepth(-49);
+        if (o.kind === 'palm') self.shadowAt(p.x + 15, p.y + 3, 66, 20, 1);
+        else if (o.kind === 'bush') self.shadowAt(p.x + 5, p.y + 2, 36, 11, 1);
+        else self.shadowAt(p.x + 4, p.y + 2, 32, 10, 1);
         var img = self.add.image(p.x, p.y, key).setOrigin(self.origins[key][0], self.origins[key][1]).setDepth(p.y);
         if (o.kind === 'palm') {
           self.tweens.add({ targets: img, angle: { from: -1.4, to: 1.4 }, duration: 2600 + Math.random() * 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: Math.random() * 1500 });
         }
       });
 
-      // dekor: alang-alang, teratai
+      // dekor tropis (tanpa tabrakan): alang-alang, teratai, karang, pisang, obor tiki, payung, perahu
       (M.decor || []).forEach(function (d) {
-        if (d.kind === 'reed') {
-          var rp = self.gp(d.gx, d.gy, ELEV_LAND), rk = self.add.image(rp.x, rp.y, 'reed').setOrigin(self.origins.reed[0], self.origins.reed[1]).setDepth(rp.y);
-          self.tweens.add({ targets: rk, angle: { from: -2.5, to: 2.5 }, duration: 1800 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        var key = d.kind, wp = { x: (d.gx - d.gy) * 32 + W / 2, y: (d.gx + d.gy) * 16 }, lp = self.gp(d.gx, d.gy, ELEV_LAND), im;
+        if (key === 'pad') {
+          key = 'pad' + d.f;
+          im = self.add.image(wp.x, wp.y, key).setOrigin(self.origins[key][0], self.origins[key][1]).setDepth(-46);
+          self.tweens.add({ targets: im, y: wp.y + 1.5, angle: { from: -3, to: 3 }, duration: 2200 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        } else if (key === 'coral') {
+          self.add.image(wp.x, wp.y, 'coral').setOrigin(self.origins.coral[0], self.origins.coral[1]).setDepth(-46).setAlpha(0.92);
+        } else if (key === 'boat') {
+          im = self.add.image(wp.x, wp.y, 'boat').setOrigin(self.origins.boat[0], self.origins.boat[1]).setDepth(wp.y);
+          self.tweens.add({ targets: im, y: wp.y + 1.6, angle: { from: -1.2, to: 1.2 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        } else if (key === 'towel') {
+          self.add.image(lp.x, lp.y, 'towel').setOrigin(self.origins.towel[0], self.origins.towel[1]).setDepth(-48);
         } else {
-          var pk = 'pad' + d.f, ppx = (d.gx - d.gy) * 32 + W / 2, ppy = (d.gx + d.gy) * 16 + 16;
-          var pi2 = self.add.image(ppx, ppy, pk).setOrigin(self.origins[pk][0], self.origins[pk][1]).setDepth(-46);
-          self.tweens.add({ targets: pi2, y: ppy + 1.5, angle: { from: -3, to: 3 }, duration: 2200 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          if (key === 'parasol') self.shadowAt(lp.x + 16, lp.y + 3, 54, 16, 1);
+          else if (key === 'banana') self.shadowAt(lp.x + 7, lp.y + 3, 44, 14, 1);
+          else if (key === 'torch') self.shadowAt(lp.x + 5, lp.y + 2, 18, 7, 1);
+          else if (key === 'barrel' || key === 'crate') self.shadowAt(lp.x + 4, lp.y + 2, 24, 8, 1);
+          im = self.add.image(lp.x, lp.y, key).setOrigin(self.origins[key][0], self.origins[key][1]).setDepth(lp.y);
+          if (key === 'reed' || key === 'banana') self.tweens.add({ targets: im, angle: { from: -2.2, to: 2.2 }, duration: 1800 + Math.random() * 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+          if (key === 'torch') {
+            var fl = self.add.image(lp.x, lp.y - 36, 'flame').setOrigin(0.5, 0.9).setDepth(lp.y + 1);
+            var gl = self.add.image(lp.x, lp.y - 38, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5).setDepth(lp.y + 2);
+            self.tweens.add({ targets: fl, scaleY: { from: 0.85, to: 1.2 }, scaleX: { from: 1.1, to: 0.85 }, duration: 180 + Math.random() * 120, yoyo: true, repeat: -1 });
+            self.tweens.add({ targets: gl, alpha: { from: 0.35, to: 0.65 }, duration: 260 + Math.random() * 200, yoyo: true, repeat: -1 });
+          }
         }
       });
       // bayangan ikan berenang pelan di bawah air
       (M.fishC || []).forEach(function (fc) {
-        var cx0 = (fc.gx - fc.gy) * 32 + W / 2, cy0 = (fc.gx + fc.gy) * 16 + 16;
+        var cx0 = (fc.gx - fc.gy) * 32 + W / 2, cy0 = (fc.gx + fc.gy) * 16;
         for (var fk = 0; fk < fc.n; fk++) {
           (function (ph, dir, rr, dur) {
             var fsh = self.add.image(cx0, cy0, 'fishsh').setDepth(-47).setAlpha(0.6).setScale(0.8 + Math.random() * 0.5);
@@ -1227,9 +1483,10 @@ function createSceneClass() {
 
       // kios + NPC penjual ikan
       var sp0 = this.gp(M.stall.i + 0.5, M.stall.j + 0.5, ELEV_LAND);
+      this.shadowAt(sp0.x + 8, sp0.y + 8, 80, 22, 1);
       this.add.image(sp0.x, sp0.y + 6, 'stall').setOrigin(this.origins.stall[0], this.origins.stall[1]).setDepth(sp0.y);
       var np = this.gp(M.npc.gx, M.npc.gy, ELEV_LAND);
-      this.add.ellipse(np.x, np.y - 1, 22, 9, 0x000000, 0.28).setDepth(np.y - 1);
+      this.shadowAt(np.x + 3, np.y, 28, 10, 1).setDepth(np.y - 1);
       this.npcSprite = this.add.sprite(np.x, np.y, 'npc', 'i0').setOrigin(0.5, 1).setDepth(np.y);
       this.add.text(np.x, np.y - 56, 'Pak Marlin', { fontFamily: 'Arial, sans-serif', fontSize: '15px', fontStyle: 'bold', color: '#ffffff', stroke: '#06222c', strokeThickness: 4 })
         .setResolution(3).setOrigin(0.5, 1).setDepth(9000);
@@ -1252,7 +1509,7 @@ function createSceneClass() {
       var sx0 = Save.data.px, sy0 = Save.data.py;
       this.gx = M.spawn.gx; this.gy = M.spawn.gy;
       if (typeof sx0 === 'number' && typeof sy0 === 'number' && this.canStand(sx0, sy0)) { this.gx = sx0; this.gy = sy0; }
-      this.shadow = this.add.ellipse(0, 0, 22, 9, 0x000000, 0.3);
+      this.shadow = this.add.image(0, 0, 'shadow').setDisplaySize(28, 10);
       this.player = this.add.sprite(0, 0, 'player', '2_0').setOrigin(0.5, 1);
 
       // pancing
@@ -1290,6 +1547,7 @@ function createSceneClass() {
     }
 
     /* ---------- koordinat & tabrakan ---------- */
+    shadowAt(x, y, w, h, a) { return this.add.image(x, y, 'shadow').setDisplaySize(w, h).setAlpha(a || 1).setDepth(-49); }
     gp(gx, gy, elev) { return { x: Math.round((gx - gy) * 32 + W / 2), y: Math.round((gx + gy) * 16 - elev) }; }
     typeAt(gx, gy) {
       var i = Math.floor(gx), j = Math.floor(gy);
@@ -1315,7 +1573,7 @@ function createSceneClass() {
     placePlayer() {
       var p = this.gp(this.gx, this.gy, this.elevAt(this.gx, this.gy));
       this.player.setPosition(p.x, p.y).setDepth(p.y + 0.5);
-      this.shadow.setPosition(p.x, p.y - 1).setDepth(p.y - 0.5);
+      this.shadow.setPosition(p.x + 3, p.y).setDepth(p.y - 0.5);
       this.foot = p;
     }
 
@@ -1452,6 +1710,7 @@ function createSceneClass() {
       var dt = Math.min(delta, 50) / 1000;
       this.waves1.tilePositionX += 9 * dt; this.waves1.tilePositionY += 3 * dt;
       this.waves2.tilePositionX -= 6 * dt; this.waves2.tilePositionY += 4 * dt;
+      this.waves3.tilePositionX += 5 * dt; this.waves3.tilePositionY += 2.5 * dt;
 
       var f = this.fish, paused = Ctl.modal;
       var mv = paused ? [0, 0] : readMove();
