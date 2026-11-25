@@ -255,10 +255,10 @@ function buildMap() {
   function nearWater(ci, cj) {
     return at(ci + 1, cj) === WATER || at(ci - 1, cj) === WATER || at(ci, cj + 1) === WATER || at(ci, cj - 1) === WATER;
   }
-  place('palm', 12, function (ci, cj) { var d = dist(ci, cj); return d > 4.5 && d < 10.8; }, 2.6);
-  place('tree', 5, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.6);
-  place('bush', 7, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
-  place('rock', 8, function (ci, cj) { return nearWater(ci, cj) || dist(ci, cj) > 7.6; }, 2.3);
+  place('palm', 15, function (ci, cj) { var d = dist(ci, cj); return d > 4.5 && d < 10.8; }, 2.6);
+  place('tree', 7, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.6);
+  place('bush', 10, function (ci, cj) { return T[cj * GRID + ci] === GRASS && dist(ci, cj) < 7.4; }, 2.3);
+  place('rock', 10, function (ci, cj) { return nearWater(ci, cj) || dist(ci, cj) > 7.6; }, 2.3);
 
   function addProp(kind, ci, cj) {
     var tt = at(ci, cj);
@@ -446,7 +446,7 @@ function makeGround(map) {
           px(g, gx2, top + gr, 1, 1, '#2f8a34'); px(g, gx2 - 1, top + gr - 1, 1, 1, '#2f8a34'); px(g, gx2 + 1, top + gr - 1, 1, 1, '#2f8a34');
         }
         if (t === GRASS) {                                     // rumput lebih rapat + bercak cahaya/bayangan
-          for (var tf = 0; tf < 4; tf++) if (hash(i, j, 200 + tf) < 0.7) {
+          for (var tf = 0; tf < 6; tf++) if (hash(i, j, 200 + tf) < 0.78) {
             var tr = 6 + Math.floor(hash(i, j, 210 + tf) * 17), th2 = rowHW(tr), tx2 = cx + Math.floor((hash(i, j, 220 + tf) - 0.5) * (th2 - 4));
             var dark = hash(i, j, 230 + tf) < 0.5;
             px(g, tx2, top + tr - 2, 1, 3, dark ? '#2f8a34' : '#8fe06a');
@@ -467,6 +467,17 @@ function makeGround(map) {
         if (t === SAND && hash(i, j, 95) < 0.12) {             // kerang
           var sr = 10 + Math.floor(hash(i, j, 96) * 10);
           px(g, cx + Math.floor((hash(i, j, 97) - 0.5) * 20), top + sr, 2, 1, hash(i, j, 98) < 0.5 ? '#ffffff' : '#f7c1c9');
+        }
+        if (t === GRASS && hash(i, j, 270) < 0.42) {          // bilah rumput kecil tambahan
+          var br = 8 + Math.floor(hash(i, j, 271) * 16);
+          var bx = cx + Math.floor((hash(i, j, 272) - 0.5) * 22);
+          px(g, bx, top + br, 1, 3, '#347f35');
+          px(g, bx + 2, top + br - 1, 1, 2, '#8cdb63');
+        }
+        if (t === SAND && hash(i, j, 273) < 0.34) {           // kilau pasir halus
+          var glr = 7 + Math.floor(hash(i, j, 274) * 17);
+          var glx = cx + Math.floor((hash(i, j, 275) - 0.5) * 24);
+          px(g, glx, top + glr, 2, 1, 'rgba(255,255,235,0.62)');
         }
       }
 
@@ -592,60 +603,94 @@ function makeNpcSheet() {
 
 /* ----- objek dunia ----- */
 function makePalm() {
-  var S = 2, LW = 46, LH = 60, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 20, 56, 10, 2, 'rgba(0,0,0,0.22)', S);
-  var bx = 20, bY = 56, top = 18, y, x, cx = 0, cy = 0;
-  for (y = bY; y >= top; y--) {
-    var t = (bY - y) / (bY - top);
-    x = Math.round(bx + 7 * t * t + 2 * t);
-    var wdt = y > bY - 8 ? 4 : 3;
-    var ring = ((bY - y) % 4 === 0);
-    px(g, (x - 1) * S, y * S, wdt * S, S, ring ? '#6b4a2b' : '#9a6b3c');
-    px(g, (x - 1) * S, y * S, S, S, ring ? '#5a3c22' : '#b98a52');
-    cx = x; cy = y;
+  // Kelapa tropis yang lebih lebar, berlapis, dan memiliki daun melengkung.
+  var S = 2, LW = 64, LH = 72, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
+  ell(g, 30, 67, 13, 3, 'rgba(0,0,0,0.25)', S);
+  var bx = 29, by = 66, top = 18, y, x;
+  for (y = by; y >= top; y--) {
+    var t = (by - y) / (by - top);
+    x = Math.round(bx + 5 * t + 2 * Math.sin(t * 2.4));
+    var width = y > by - 9 ? 5 : 3;
+    px(g, (x - 1) * S, y * S, width * S, S, ((by-y) % 5 < 2) ? '#654323' : '#986333');
+    px(g, (x - 1) * S, y * S, S, S, '#c08a4e');
+    if ((by-y) % 8 === 0) px(g, (x + 2) * S, y * S, S, S, '#d4a568');
   }
-  var greens = ['#1f7a33', '#2f9a44', '#46b957'];
-  var N = 7;
-  for (var k = 0; k < N; k++) {
-    var a = k * (Math.PI * 2 / N) + 0.35, dx = Math.cos(a), dy = Math.sin(a);
-    for (var tt = 0; tt <= 15; tt += 0.5) {
-      var lx = Math.round(cx + dx * tt * 1.15), ly = Math.round(cy + dy * tt * 0.35 + tt * tt * 0.05 - (tt < 3 ? 1 : 0));
-      var th = tt < 9 ? 2 : 1;
-      var col = tt < 5 ? greens[1] : (dy < 0 ? greens[2] : greens[0]);
-      px(g, lx * S, ly * S, th * S, th * S, col);
-      px(g, lx * S, (ly + th) * S, S, S, greens[0]);
+  var cx = x, cy = top, greens = ['#145d2c','#1d7937','#2e9845','#49b957','#79d65d'];
+  // Pelepah besar dengan lengkungan turun di ujung.
+  for (var k = 0; k < 9; k++) {
+    var a = -Math.PI + k * (Math.PI * 2 / 9) + 0.12;
+    var dx = Math.cos(a), dy = Math.sin(a);
+    var len = 22 + (k % 3) * 2;
+    var prevX = cx, prevY = cy;
+    for (var t2 = 1; t2 <= len; t2++) {
+      var bend = t2 / len;
+      var lx = Math.round(cx + dx * t2 * 1.18 + Math.sin(bend * Math.PI) * dx * 2);
+      var ly = Math.round(cy + dy * t2 * 0.52 + bend * bend * 8);
+      var thick = t2 < 5 ? 2 : 1;
+      var leafCol = (dy < -0.15) ? greens[3] : greens[1];
+      px(g, lx*S, ly*S, thick*S, thick*S, leafCol);
+      if (t2 % 2 === 0) {
+        px(g, (lx - 1)*S, (ly + 1)*S, S, S, greens[0]);
+        px(g, (lx + 1)*S, (ly - 1)*S, S, S, greens[4]);
+      }
+      // Anak daun pendek di kedua sisi pelepah.
+      if (t2 > 4 && t2 < len - 2 && t2 % 2 === 0) {
+        var side = (k % 2 ? 1 : -1);
+        var wing = Math.max(2, Math.floor((t2 / len) * 5));
+        px(g, (lx + side*wing)*S, (ly - 1)*S, 2*S, S, greens[2]);
+        px(g, (lx - side*wing)*S, (ly + 1)*S, 2*S, S, greens[1]);
+      }
+      prevX = lx; prevY = ly;
     }
+    // Ujung pelepah lebih gelap untuk memberi siluet daun.
+    px(g, prevX*S, prevY*S, 2*S, S, greens[0]);
   }
-  for (var k2 = 0; k2 < 5; k2++) {                         // daun lapis kedua (lebih rimbun)
-    var a2 = k2 * (Math.PI * 2 / 5) + 0.9, dx2 = Math.cos(a2), dy2 = Math.sin(a2);
-    for (var t2 = 2; t2 <= 11; t2 += 0.5) {
-      var lx2 = Math.round(cx + dx2 * t2 * 1.1), ly2 = Math.round(cy - 1 + dy2 * t2 * 0.3 + t2 * t2 * 0.06);
-      px(g, lx2 * S, ly2 * S, S, S, t2 > 8 ? greens[0] : greens[2]);
-    }
-  }
-  for (var y2 = top; y2 < bY; y2 += 3) px(g, Math.round(bx + 7 * Math.pow((bY - y2) / (bY - top), 2) + 2 * ((bY - y2) / (bY - top))) * S + S, y2 * S, S, S, '#c99a62');   // sorot batang
-  px(g, (cx - 2) * S, (cy + 2) * S, 2 * S, 2 * S, '#5a3a1e');
-  px(g, (cx + 1) * S, (cy + 3) * S, 2 * S, 2 * S, '#4a2f18');
-  px(g, (cx - 1) * S, (cy + 4) * S, 2 * S, 2 * S, '#6b4526');
-  return { canvas: c, ox: bx / LW, oy: 57 / LH };
+  // Pangkal daun dan kelapa kecil.
+  disc(g, cx, cy, 4, '#286d32', S);
+  disc(g, cx-3, cy+3, 2, '#8b5a2b', S);
+  disc(g, cx+2, cy+4, 2, '#a96b32', S);
+  px(g, (cx-1)*S, (cy-2)*S, 2*S, S, '#8ee16b');
+  return { canvas: c, ox: bx / LW, oy: 68 / LH };
 }
 function makeBush() {
-  var S = 2, LW = 22, LH = 16, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 11, 13, 9, 2, 'rgba(0,0,0,0.2)', S);
-  disc(g, 7, 9, 5, '#2b8737', S); disc(g, 15, 9, 5, '#2b8737', S); disc(g, 11, 6, 5, '#37a447', S);
-  disc(g, 9, 5, 2, '#5fcf68', S); disc(g, 14, 8, 1, '#4fbf5a', S);
-  px(g, 6 * S, 9 * S, S, S, '#ff7aa8'); px(g, 12 * S, 4 * S, S, S, '#ffe36a'); px(g, 16 * S, 10 * S, S, S, '#ff7aa8');
-  return { canvas: c, ox: 0.5, oy: 14 / LH };
+  var S = 2, LW = 30, LH = 22, cv = mkCanvas(LW*S, LH*S), c = cv[0], g = cv[1];
+  ell(g, 15, 19, 13, 3, 'rgba(0,0,0,0.22)', S);
+  // Lapisan daun bertumpuk dengan highlight pixel.
+  [[7,13,7,'#17672e'],[14,10,8,'#23833a'],[22,13,7,'#17672e'],[10,8,6,'#329b45'],[18,7,7,'#3eaa4c'],[25,11,5,'#2b8e3e']].forEach(function(v){
+    disc(g,v[0],v[1],v[2],v[3],S);
+  });
+  [[6,10],[10,6],[16,5],[21,8],[24,12],[13,13]].forEach(function(v,i){
+    px(g,v[0]*S,v[1]*S,2*S,2*S,i%2?'#83dc68':'#62c957');
+  });
+  // Bunga mungil khas taman pulau.
+  px(g,5*S,13*S,2*S,2*S,'#ff86a8'); px(g,6*S,12*S,S,S,'#fff0a0');
+  px(g,20*S,5*S,2*S,2*S,'#ffd45e'); px(g,21*S,4*S,S,S,'#fff4b0');
+  px(g,24*S,14*S,2*S,2*S,'#f58ab2');
+  return { canvas:c, ox:0.5, oy:20/LH };
 }
 function makeRock(v) {
-  var S = 2, LW = 20, LH = 14, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
-  ell(g, 10, 11, 8, 2, 'rgba(0,0,0,0.2)', S);
+  var S = 2, LW = 26, LH = 19, cv = mkCanvas(LW*S,LH*S), c=cv[0], g=cv[1];
+  ell(g,13,16,11,3,'rgba(0,0,0,0.24)',S);
   if (v === 0) {
-    ell(g, 10, 8, 7, 5, '#7c8894', S); ell(g, 9, 7, 5, 3, '#9aa6b2', S); ell(g, 8, 5, 2, 1, '#c5cdd5', S); ell(g, 15, 10, 3, 2, '#6b7682', S);
+    ell(g,13,11,10,7,'#586b73',S);
+    ell(g,11,9,8,6,'#84969a',S);
+    ell(g,9,7,5,3,'#b6c5bd',S);
+    ell(g,17,12,5,4,'#465a62',S);
+    px(g,7*S,7*S,4*S,S,'#d4dfd1');
+    px(g,5*S,10*S,2*S,3*S,'#a9b9b2');
+    px(g,17*S,8*S,3*S,2*S,'#71858a');
   } else {
-    ell(g, 9, 9, 5, 3, '#7c8894', S); ell(g, 8, 8, 3, 2, '#9aa6b2', S); ell(g, 15, 10, 3, 2, '#6b7682', S); ell(g, 14, 9, 1, 1, '#bcc5ce', S);
+    ell(g,12,12,8,5,'#5c7076',S);
+    ell(g,10,10,6,4,'#9aa9a4',S);
+    ell(g,18,13,6,4,'#435a62',S);
+    px(g,7*S,8*S,4*S,S,'#d1d9c9');
+    px(g,13*S,6*S,3*S,2*S,'#bac8bc');
+    px(g,18*S,11*S,3*S,2*S,'#71858a');
   }
-  return { canvas: c, ox: 0.5, oy: 12 / LH };
+  // Lumut kecil agar cocok dengan tepi pantai tropis.
+  px(g,4*S,13*S,3*S,S,'#4b9a50');
+  px(g,20*S,14*S,2*S,S,'#367e43');
+  return { canvas:c, ox:0.5, oy:17/LH };
 }
 function makeStall() {
   var S = 2, LW = 48, LH = 44, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x;
@@ -701,20 +746,35 @@ function makeFoam(map) {
   return c;
 }
 function makeTree() {
-  var S = 2, LW = 44, LH = 46, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], r = rng(31), k, a, d;
-  ell(g, 22, 42, 15, 3, 'rgba(0,0,0,0.22)', S);
-  px(g, 19 * S, 27 * S, 6 * S, 14 * S, '#7a4e24'); px(g, 19 * S, 27 * S, 2 * S, 14 * S, '#a06f3c'); px(g, 23 * S, 27 * S, 2 * S, 14 * S, '#5a3a1e');
-  px(g, 17 * S, 39 * S, 10 * S, 2 * S, '#6b4526');
-  [[14, 21, 10], [30, 21, 10], [22, 12, 11], [22, 22, 11], [22, 17, 13]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#256b31', S); });
-  ell(g, 22, 29, 13, 3, '#1b5a28', S);
-  [[13, 18, 8], [29, 18, 8], [21, 10, 9], [21, 19, 10]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#3ba246', S); });
-  [[11, 15, 4], [19, 7, 5], [26, 12, 4], [16, 12, 3], [30, 15, 3]].forEach(function (b) { disc(g, b[0], b[1], b[2], '#68cd62', S); });
-  for (k = 0; k < 46; k++) { a = r() * 6.283; d = Math.sqrt(r()) * 14; px(g, Math.round(22 + Math.cos(a) * d) * S, Math.round(18 + Math.sin(a) * d * 0.95) * S, S, S, Math.sin(a) < 0 ? '#9be883' : '#1d5a2a'); }
-  for (k = 0; k < 11; k++) {
-    a = r() * 6.283; d = 4 + r() * 9; var fx = Math.round(22 + Math.cos(a) * d), fy = Math.round(18 + Math.sin(a) * d * 0.85);
-    px(g, fx * S, fy * S, 2 * S, 2 * S, r() < 0.5 ? '#ef7a1f' : '#e5392b'); px(g, fx * S, fy * S, S, S, '#ffd2a0');
+  // Pohon tropis berkanopi lebat, buah kecil, dan cahaya daun bertingkat.
+  var S=2, LW=54, LH=56, cv=mkCanvas(LW*S,LH*S), c=cv[0], g=cv[1], r=rng(431), k,a,d;
+  ell(g,27,51,18,4,'rgba(0,0,0,0.24)',S);
+  // Batang dan akar.
+  px(g,24*S,29*S,7*S,20*S,'#684321');
+  px(g,25*S,29*S,2*S,20*S,'#b17a42');
+  px(g,29*S,31*S,2*S,17*S,'#8a592f');
+  px(g,21*S,45*S,14*S,3*S,'#704522');
+  px(g,22*S,47*S,4*S,3*S,'#8d5c31'); px(g,31*S,47*S,4*S,3*S,'#5c3b22');
+  // Kanopi gelap di belakang.
+  [[15,22,12],[37,22,12],[26,13,13],[25,25,15],[11,31,8],[41,31,8]].forEach(function(v){disc(g,v[0],v[1],v[2],'#14572b',S);});
+  // Lapisan hijau utama.
+  [[15,19,10],[36,18,11],[25,11,11],[25,24,13],[11,29,7],[40,29,7],[31,30,8]].forEach(function(v){disc(g,v[0],v[1],v[2],'#27843a',S);});
+  // Highlight daun.
+  [[12,15,6],[22,8,7],[34,13,6],[18,21,7],[29,20,8],[39,25,5],[9,27,4]].forEach(function(v){disc(g,v[0],v[1],v[2],'#48ad4d',S);});
+  [[12,13,3],[20,7,3],[29,10,3],[35,16,3],[17,19,3],[27,18,4],[38,24,2]].forEach(function(v){disc(g,v[0],v[1],v[2],'#83d866',S);});
+  for(k=0;k<70;k++){
+    a=r()*6.283; d=Math.sqrt(r())*18;
+    var fx=Math.round(26+Math.cos(a)*d), fy=Math.round(21+Math.sin(a)*d*0.82);
+    px(g,fx*S,fy*S,S,S,Math.sin(a)<-0.15?'#9be879':(r()<0.5?'#17632e':'#55b953'));
   }
-  return { canvas: c, ox: 0.5, oy: 41 / LH };
+  // Buah tropis kecil, tersebar dan tidak terlalu ramai.
+  for(k=0;k<8;k++){
+    a=r()*6.283; d=5+r()*12;
+    var bx=Math.round(26+Math.cos(a)*d), by=Math.round(21+Math.sin(a)*d*0.75);
+    px(g,bx*S,by*S,2*S,2*S,k%3===0?'#f5a623':'#e85c36');
+    px(g,bx*S,by*S,S,S,'#ffd37a');
+  }
+  return {canvas:c, ox:0.5, oy:51/LH};
 }
 function makeLamp() {
   var S = 2, LW = 14, LH = 40, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1];
