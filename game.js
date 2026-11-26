@@ -74,8 +74,24 @@ function cleanCounts(o) {
   }
   return r;
 }
+var NSLOT = 50, NHOT = 6;                 // 50 kotak tas; 6 kotak pertama tampil di hotbar (setelah slot joran)
+function cleanSlots(arr) {
+  var r = [], i;
+  for (i = 0; i < NSLOT; i++) { var id = Array.isArray(arr) ? arr[i] : null; r.push(id && FISH_BY_ID[id] ? id : null); }
+  return r;
+}
+function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jenis) -> 1 ikan per kotak
+  var list = [], over = 0, earn = 0;
+  FISH.forEach(function (f) { var n = counts[f.id] || 0; while (n-- > 0) list.push(f); });
+  list.sort(function (x, y) { return y.price - x.price; });          // ikan paling berharga disimpan dulu
+  var r = [];
+  list.forEach(function (f) { if (r.length < NSLOT) r.push(f.id); else { over++; earn += f.price; } });   // kelebihan => dijual otomatis
+  while (r.length < NSLOT) r.push(null);
+  return { slots: r, over: over, earn: earn };
+}
 var Save = {
-  data: { coins: 0, inv: {}, caught: {}, px: null, py: null },
+  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null },
+  migrated: 0,
   load: function () {
     try {
       var raw = localStorage.getItem(SAVE_KEY);
@@ -83,7 +99,9 @@ var Save = {
       var d = JSON.parse(raw);
       if (!d || typeof d !== 'object') return;
       this.data.coins = Math.max(0, Math.floor(+d.coins || 0));
-      this.data.inv = cleanCounts(d.inv);
+      if (Array.isArray(d.slots)) this.data.slots = cleanSlots(d.slots);
+      else { var m = slotsFromCounts(cleanCounts(d.inv)); this.data.slots = m.slots; this.data.coins += m.earn; this.migrated = m.over; }
+      syncInv();
       this.data.caught = cleanCounts(d.caught);
       this.data.px = typeof d.px === 'number' ? d.px : null;
       this.data.py = typeof d.py === 'number' ? d.py : null;
@@ -93,10 +111,22 @@ var Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* abaikan */ }
   },
   reset: function () {
-    this.data = { coins: 0, inv: {}, caught: {}, px: null, py: null };
+    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null };
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* abaikan */ }
   }
 };
+
+function syncInv() {                      // hitungan per jenis (dipakai toko) diturunkan dari kotak
+  var inv = {};
+  Save.data.slots.forEach(function (id) { if (id) inv[id] = (inv[id] || 0) + 1; });
+  Save.data.inv = inv;
+}
+function freeSlots() { var n = 0; Save.data.slots.forEach(function (x) { if (!x) n++; }); return n; }
+function addFishSlot(id) {
+  var s = Save.data.slots;
+  for (var i = 0; i < s.length; i++) if (!s[i]) { s[i] = id; syncInv(); return i; }
+  return -1;
+}
 
 /* ---------- Pembantu kecil ---------- */
 function rng(seed) {
@@ -1005,6 +1035,8 @@ function darkPal(c, f) { return [darker(c[0], f), darker(c[1], f), darker(c[2], 
 /* parameter pose per frame: by(naik-turun badan), lean, n/f = [sudut bahu, sudut siku] lengan dekat/jauh,
    ln/lf = [sudut, angkat] kaki dekat/jauh, rod = sudut joran (rad), blink, mouth */
 function heroPose(anim, k) {
+  var item = null;
+  if (/^[rf](idle|walk|run)$/.test(anim)) { item = anim[0]; anim = anim.slice(1); }
   var P = { by: 0, lean: 0, na: [0.05, 0.2], fa: [-0.05, 0.15], ln: [0, 0], lf: [0, 0], blink: false, mouth: 'smile', rod: null }, ph, s, c;
   if (anim === 'idle') {
     P.by = [0, 0, 1, 1][k]; P.na = [0.06 + (k > 1 ? 0.04 : 0), 0.22]; P.fa = [-0.06, 0.16]; P.blink = k === 3;
@@ -1037,9 +1069,16 @@ function heroPose(anim, k) {
     P.na = [-2.6 + k * 0.15, -2.8 + k * 0.1]; P.fa = [-2.5 + k * 0.15, -2.7 + k * 0.1]; P.by = k === 0 ? -1 : (k === 1 ? 0 : 0); P.mouth = 'open';
     P.ln = [0, k === 0 ? 2 : 0]; P.lf = [0, k === 0 ? 2 : 0];
   }
+  if (item === 'r') {                                      // membawa joran: lengan dekat memegang gagang, joran miring ke depan-atas
+    P.na = [0.42, 0.95]; P.rod = -1.12 + (anim === 'idle' ? (k > 1 ? 0.03 : 0) : Math.sin(k / 6 * Math.PI * 2) * 0.05);
+  } else if (item === 'f') {                               // memegang ikan di depan dada
+    P.na = [0.4, 1.95]; P.rod = null;
+    if (anim === 'idle') P.fa = [-0.04, 0.16];
+  }
   return P;
 }
-var HERO_ANIMS = [['idle', 4], ['walk', 6], ['run', 6], ['fish', 2], ['cast', 4], ['pull', 2], ['catch', 3]];
+var HERO_ANIMS = [['idle', 4], ['walk', 6], ['run', 6], ['fish', 2], ['cast', 4], ['pull', 2], ['catch', 3],
+  ['ridle', 4], ['rwalk', 6], ['rrun', 6], ['fidle', 4], ['fwalk', 6], ['frun', 6]];
 var HERO_VIEWS = ['F0', 'F1', 'B0', 'B1', 'S'];
 var IDLE_SEQ = [0, 0, 1, 1, 2, 2, 3, 2, 2, 1, 1, 0];
 
@@ -1282,9 +1321,10 @@ function makeFishCanvas(f) {
   if (f.rarity === 'legendary') { px(g, 20, 2, 1, 1, '#fff'); px(g, 2, 11, 1, 1, '#fff'); px(g, 22, 8, 1, 1, '#fff'); }
   return c;
 }
-var ICON = {};
+var ICON = {}, ICON_ROD = '';
 function buildIcons() {
   FISH.forEach(function (f) { ICON[f.id] = makeFishCanvas(f).toDataURL(); });
+  ICON_ROD = outlined(makeRod(), '#2a1408').canvas.toDataURL();
 }
 
 /* =====================================================================
@@ -1433,11 +1473,60 @@ function initKeyboard() {
     if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.pressFish(); e.preventDefault(); }
     else if (e.code === 'KeyE') { if (scene) scene.pressTalk(); }
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
+    else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
     else if (e.code === 'Escape') Modal.close();
   });
   window.addEventListener('keyup', function (e) { if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
   window.addEventListener('blur', function () { Ctl.keys = {}; resetJoy(); });
 }
+
+/* ---------- Hotbar: tombol 1 = joran, tombol 2-7 = ikan dari kotak tas 1-6 ---------- */
+var Equip = { sel: 0 };                      // 0 = joran, 1..6 = ikan di kotak tas (sel-1)
+function heldFishId() { return Equip.sel >= 1 ? (Save.data.slots[Equip.sel - 1] || null) : null; }
+var Hotbar = {
+  els: [], name: null,
+  build: function () {
+    var h = $('hotbar'), self = this;
+    h.innerHTML = ''; this.els = [];
+    for (var i = 0; i <= NHOT; i++) (function (i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'hb';
+      b.innerHTML = '<span class="hk">' + (i + 1) + '</span><img alt=""><i class="hr"></i>';
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); self.pick(i); });
+      h.appendChild(b); self.els.push(b);
+    })(i);
+    this.name = $('hbName');
+  },
+  render: function () {
+    if (!this.els.length) return;
+    if (Equip.sel >= 1 && !Save.data.slots[Equip.sel - 1]) Equip.sel = 0;
+    for (var i = 0; i <= NHOT; i++) {
+      var b = this.els[i], img = b.children[1], id = i === 0 ? 'rod' : Save.data.slots[i - 1];
+      var cls = 'hb' + (i === 0 ? ' rod has' : (id ? ' has' : ' empty')) + (Equip.sel === i ? ' sel' : '');
+      if (b.className !== cls) b.className = cls;
+      if (id) {
+        var src = i === 0 ? ICON_ROD : ICON[id];
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+        img.style.visibility = 'visible';
+        b.style.setProperty('--rc', i === 0 ? '#e0b06a' : RARITY[FISH_BY_ID[id].rarity].color);
+      } else img.style.visibility = 'hidden';
+    }
+    var sid = heldFishId();
+    this.name.textContent = Equip.sel === 0 ? 'Joran Kayu Pemula' : (sid ? FISH_BY_ID[sid].name : '');
+  },
+  canSwitch: function () {
+    var st = scene && scene.fish ? scene.fish.state : 'idle';
+    return st === 'idle' || st === 'cooldown';
+  },
+  set: function (i) {                          // i = 0 joran, 1..6 ikan
+    if (!this.canSwitch()) { UI.toast('<div>Selesaikan memancing dulu</div>', '#5fe0e6', false, 1100); return false; }
+    if (i >= 1 && !Save.data.slots[i - 1]) return false;
+    Equip.sel = (i === Equip.sel && i !== 0) ? 0 : i;
+    this.render();
+    return true;
+  },
+  pick: function (i) { if (Ctl.modal) return; this.set(i); }
+};
 
 /* ---------- Modal Inventory & Toko ---------- */
 var invSel = null, shopSel = null, resetArm = 0;
@@ -1456,7 +1545,7 @@ var Modal = {
     $('panelInv').hidden = name !== 'inv';
     $('panelShop').hidden = name !== 'shop';
     Ctl.modal = true; Ctl.sprint = false; resetJoy();
-    if (name === 'inv') { resetArm = 0; $('btnReset').textContent = 'Reset Data'; renderInventory(); }
+    if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Reset Data'; renderInventory(); }
     if (name === 'shop') { npcLine = NPC_SAY.hi; renderShop(); }
   },
   close: function () {
@@ -1482,7 +1571,8 @@ function fishDetailHTML(f, extra) {
     '<p>' + f.desc + '</p>' + (extra || '');
 }
 
-function renderInventory() {
+var invTab = 'bag', slotSel = null, moveFrom = null;
+function renderCollection() {
   var list = $('invList'), detail = $('invDetail');
   list.innerHTML = '';
   if (!invSel || !FISH_BY_ID[invSel] || !(Save.data.caught[invSel] > 0)) {
@@ -1501,30 +1591,76 @@ function renderInventory() {
   });
   detail.innerHTML = invSel ? fishDetailHTML(FISH_BY_ID[invSel])
     : '<div class="empty">Belum ada ikan.<br>Tangkap ikan pertamamu untuk membuka informasinya!</div>';
+}
+function slotDetailHTML(i) {
+  var id = Save.data.slots[i];
+  if (!id) return '<div class="empty">Kotak ' + (i + 1) + ' kosong.<br>' + (moveFrom !== null ? 'Ketuk untuk memindahkan ikan ke sini.' : 'Ikan hasil tangkapan masuk ke kotak kosong pertama.') + '</div>';
+  var f = FISH_BY_ID[id];
+  return '<img class="big" src="' + ICON[id] + '" alt=""><h3>' + f.name + '</h3><div class="tag">' + rarTag(f.rarity) + '</div>' +
+    '<div class="stat"><span>Kotak</span><b>' + (i + 1) + (i < NHOT ? ' (hotbar ' + (i + 2) + ')' : '') + '</b></div>' +
+    '<div class="stat"><span>Harga jual</span><b>' + fmt(f.price) + ' Coins</b></div>' +
+    '<div class="stat"><span>Total tertangkap</span><b>' + (Save.data.caught[id] || 0) + '</b></div>' +
+    '<p>' + f.desc + '</p><div class="btns">' +
+    (i < NHOT ? '<button class="btn blue" type="button" id="btnHold">Pegang</button>' : '') +
+    '<button class="btn" type="button" id="btnMove">' + (moveFrom === i ? 'Batal pindah' : 'Pindahkan') + '</button></div>';
+}
+function renderBag() {
+  var grid = $('slotGrid');
+  grid.innerHTML = '';
+  Save.data.slots.forEach(function (id, i) {
+    var d = document.createElement('div');
+    d.className = 'slot' + (i < NHOT ? ' hot' : '') + (id ? ' has' : '') + (slotSel === i ? ' sel' : '') + (moveFrom === i ? ' mv' : '');
+    if (id) d.style.setProperty('--rc', RARITY[FISH_BY_ID[id].rarity].color);
+    d.innerHTML = (i < NHOT ? '<b class="sk">' + (i + 2) + '</b>' : '') + (id ? '<img src="' + ICON[id] + '" alt=""><i class="rb"></i>' : '');
+    d.addEventListener('click', function () {
+      if (moveFrom !== null) {
+        var sl = Save.data.slots, t = sl[moveFrom]; sl[moveFrom] = sl[i]; sl[i] = t;
+        moveFrom = null; slotSel = i; Save.write(); Hotbar.render();
+      } else slotSel = i;
+      renderBag();
+    });
+    grid.appendChild(d);
+  });
+  $('slotHint').textContent = moveFrom !== null ? 'Pilih kotak tujuan untuk memindahkan ikan' : 'Ketuk kotak untuk melihat ikan  |  Kotak 1-6 muncul di hotbar';
+  var det = $('slotDetail');
+  if (slotSel === null) { for (var q = 0; q < NSLOT; q++) if (Save.data.slots[q]) { slotSel = q; break; } }
+  det.innerHTML = slotSel === null ? '<div class="empty">Tas masih kosong.<br>Tangkap ikan untuk mengisinya!</div>' : slotDetailHTML(slotSel);
+  var bh = $('btnHold'), bm = $('btnMove');
+  if (bh) bh.addEventListener('click', function () { if (Hotbar.set(slotSel + 1)) Modal.close(); });
+  if (bm) bm.addEventListener('click', function () { moveFrom = moveFrom === slotSel ? null : slotSel; renderBag(); });
+  updateInvSummary();
+}
+function updateInvSummary() {
   var found = FISH.filter(function (f) { return Save.data.caught[f.id] > 0; }).length;
-  $('invSummary').textContent = 'Ikan di tas: ' + totalFish() + '  |  Nilai: ' + fmt(totalValue()) + ' Coins  |  Koleksi: ' + found + '/' + FISH.length;
+  $('invSummary').textContent = 'Tas: ' + totalFish() + '/' + NSLOT + '  |  Nilai: ' + fmt(totalValue()) + ' Coins  |  Koleksi: ' + found + '/' + FISH.length;
+}
+function renderInventory() {
+  $('bagView').hidden = invTab !== 'bag'; $('colView').hidden = invTab !== 'col';
+  $('tabBag').classList.toggle('on', invTab === 'bag'); $('tabCol').classList.toggle('on', invTab === 'col');
+  if (invTab === 'bag') renderBag(); else { renderCollection(); updateInvSummary(); }
 }
 
 function sellFish(id, all) {
-  var n = Save.data.inv[id] || 0;
-  if (n <= 0) return;
-  var cnt = all ? n : 1, earn = cnt * FISH_BY_ID[id].price;
-  Save.data.inv[id] = n - cnt;
-  if (Save.data.inv[id] <= 0) delete Save.data.inv[id];
+  var sl = Save.data.slots, cnt = 0, i;
+  if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { sl[i] = null; cnt++; } }
+  else { for (i = sl.length - 1; i >= 0; i--) if (sl[i] === id) { sl[i] = null; cnt = 1; break; } }
+  if (!cnt) return;
+  var earn = cnt * FISH_BY_ID[id].price;
+  syncInv();
   Save.data.coins += earn;
   Save.write();
-  UI.setCoins(true); UI.setBag();
+  UI.setCoins(true); UI.setBag(); Hotbar.render();
   npcLine = NPC_SAY.thanks(cnt, earn);
   renderShop();
 }
 function sellEverything() {
   var cnt = 0, earn = 0;
-  FISH.forEach(function (f) { var n = Save.data.inv[f.id] || 0; cnt += n; earn += n * f.price; });
+  Save.data.slots.forEach(function (id) { if (id) { cnt++; earn += FISH_BY_ID[id].price; } });
   if (!cnt) return;
-  Save.data.inv = {};
+  Save.data.slots = cleanSlots(null); syncInv();
   Save.data.coins += earn;
   Save.write();
-  UI.setCoins(true); UI.setBag();
+  UI.setCoins(true); UI.setBag(); Hotbar.render();
   npcLine = NPC_SAY.thanks(cnt, earn);
   renderShop();
 }
@@ -1564,6 +1700,8 @@ function initButtons() {
   press('btnFish', function () { if (scene) scene.pressFish(); });
   press('btnTalk', function () { if (scene) scene.pressTalk(); });
   press('btnBag', function () { Modal.toggle('inv'); });
+  $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
+  $('tabCol').addEventListener('click', function () { invTab = 'col'; renderInventory(); });
   $('btnFull').addEventListener('pointerdown', function (e) {
     e.preventDefault();
     try {
@@ -1587,8 +1725,8 @@ function initButtons() {
       return;
     }
     Save.reset(); resetArm = 0; b.textContent = 'Reset Data';
-    invSel = null; shopSel = null;
-    UI.setCoins(false); UI.setBag();
+    invSel = null; shopSel = null; slotSel = null; moveFrom = null; Equip.sel = 0;
+    UI.setCoins(false); UI.setBag(); Hotbar.render();
     if (scene) scene.resetPlayer();
     renderInventory();
     UI.toast('Data game direset', '#ff7b7b', false, 1800);
@@ -1791,6 +1929,7 @@ function createSceneClass() {
       // pancing
       this.rodG = this.add.graphics();
       this.rod = this.add.image(0, 0, 'rod').setOrigin(this.rodOrg[0], this.rodOrg[1]).setVisible(false);
+      this.held = this.add.image(0, 0, 'fish_' + FISH[0].id).setVisible(false);
       this.bobber = this.add.image(0, 0, 'bobber').setOrigin(0.5, 0.75).setVisible(false);
       this.ring = this.add.ellipse(0, 0, 40, 18).setStrokeStyle(3, 0xffffff, 0.9).setVisible(false);
       this.bang = this.add.text(0, 0, '!', { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '46px', fontStyle: 'bold', color: '#ffeb3b', stroke: '#b71c1c', strokeThickness: 7 })
@@ -1885,6 +2024,43 @@ function createSceneClass() {
       if (this.fish.state !== 'idle' && this.fish.state !== 'cooldown') return;
       Modal.open('shop');
     }
+    /* Phaser: flipX memantulkan gambar terhadap TENGAH frame (titik asal tidak ikut berpindah).
+       Agar pangkal joran tetap di tangan saat menghadap kiri, titik asal dicerminkan juga. */
+    placeRod(hand, ang, depth) {
+      var left = Math.cos(ang) < 0;
+      this.rod.setOrigin(left ? 1 - this.rodOrg[0] : this.rodOrg[0], this.rodOrg[1]).setFlipX(left)
+        .setRotation(left ? ang - Math.PI : ang).setPosition(hand.x, hand.y).setDepth(depth).setVisible(true);
+    }
+    handPos() {
+      var p = this.foot, h = HERO_HAND[this.curFrame], fl = DIRVIEW[this.dirIdx].flip ? -1 : 1;
+      if (!h) return null;
+      return { x: p.x + (h[0] * 2 - HC_W) * fl, y: p.y + (h[1] * 2 - HC_FOOT * 2), ang: h[2], fl: fl };
+    }
+    updateHeld(time) {
+      var f = this.fish, p = this.foot, dv = DIRVIEW[this.dirIdx], fl = dv.flip ? -1 : 1, back = dv.v[0] === 'B';
+      var fishing = f.state !== 'idle' && f.state !== 'cooldown', catching = f.state === 'cooldown' && f.caught;
+      if (catching) {                                     // ikan diangkat tinggi dengan dua tangan
+        this.rod.setVisible(false);
+        if (f.caughtId) this.held.setTexture('fish_' + f.caughtId).setVisible(true).setScale(1.5).setFlipX(fl < 0)
+          .setPosition(p.x + fl * 2, p.y - 63 - Math.abs(Math.sin(f.t * 9)) * 3).setAngle(-18 * fl).setDepth(p.y + 3);
+        return;
+      }
+      if (fishing) { this.held.setVisible(false); return; }
+      var hp = this.handPos();
+      if (!hp) return;
+      if (Equip.sel === 0) {                              // joran dibawa miring ke depan-atas
+        this.held.setVisible(false);
+        var a = (hp.ang === null || hp.ang === undefined) ? -1.12 : hp.ang;
+        if (hp.fl < 0) a = Math.PI - a;
+        this.placeRod(hp, a, p.y + 2);
+      } else {
+        this.rod.setVisible(false);
+        var id = heldFishId();
+        if (!id) { this.held.setVisible(false); return; }
+        this.held.setTexture('fish_' + id).setVisible(true).setScale(1.25).setFlipX(fl < 0)
+          .setPosition(hp.x + fl * 5, hp.y - 6).setAngle(-24 * fl).setDepth(back ? p.y + 0.2 : p.y + 3);
+      }
+    }
     rodGeometry() {
       var f = this.fish, p = this.foot;
       var tx = f.target ? (f.target.gx - f.target.gy) * 32 + W / 2 : p.x + 20;
@@ -1902,6 +2078,8 @@ function createSceneClass() {
     startCast() {
       var tgt = this.findFishingTarget();
       if (!tgt) { UI.toast('<div>Dekati laut atau cincin riak untuk memancing</div>', '#5fe0e6', false, 1800); return; }
+      if (freeSlots() === 0) { UI.toast('<div>Tas penuh (' + NSLOT + '/' + NSLOT + ')! Jual ikan ke Pak Marlin dulu.</div>', '#ff7b7b', false, 2400); return; }
+      if (Equip.sel !== 0) { Equip.sel = 0; Hotbar.render(); }
       var f = this.fish;
       f.target = tgt; f.spot = tgt.spot; f.state = 'casting'; f.t = 0; f.launch = null; f.caught = false;
       var g = this.rodGeometry();
@@ -1927,7 +2105,7 @@ function createSceneClass() {
     }
     hideFishing() {
       this.bobber.setVisible(false); this.ring.setVisible(false); this.bang.setVisible(false);
-      this.rodG.clear(); this.rod.setVisible(false);
+      this.rodG.clear(); this.rod.setVisible(false); this.held.setVisible(false);
     }
     cancelFish(msg) {
       var f = this.fish;
@@ -1960,10 +2138,11 @@ function createSceneClass() {
       var self = this, f = this.fish, def = f.def;
       if (!def) return;
       var first = !(Save.data.caught[def.id] > 0);
-      Save.data.inv[def.id] = (Save.data.inv[def.id] || 0) + 1;
+      if (addFishSlot(def.id) < 0) { Save.data.coins += def.price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
+      f.caughtId = def.id;
       Save.data.caught[def.id] = (Save.data.caught[def.id] || 0) + 1;
       this.savePos();
-      UI.setBag();
+      UI.setBag(); Hotbar.render();
       var rc = RARITY[def.rarity].color, bx = f.bx, by = f.by, foot = this.foot;
       f.state = 'cooldown'; f.t = 0; f.def = null; f.caught = true;
       this.hideFishing();
@@ -2025,12 +2204,13 @@ function createSceneClass() {
       else if (st0 === 'bite') { anim = 'fish'; k = Math.floor(time / 110) % 2; }
       else if (st0 === 'reel') { anim = 'pull'; k = f.kick > 0.45 ? 1 : 0; }
       else if (st0 === 'cooldown' && f.caught) { anim = 'catch'; k = Math.min(2, Math.floor(f.t / 0.2)); }
-      else if (walking) { anim = wantRun ? 'run' : 'walk'; k = Math.floor(this.stride * 6) % 6; }
-      else { anim = 'idle'; k = IDLE_SEQ[Math.floor(time / 330) % IDLE_SEQ.length]; }
+      else if (walking) { anim = (Equip.sel === 0 ? 'r' : 'f') + (wantRun ? 'run' : 'walk'); k = Math.floor(this.stride * 6) % 6; }
+      else { anim = (Equip.sel === 0 ? 'r' : 'f') + 'idle'; k = IDLE_SEQ[Math.floor(time / 330) % IDLE_SEQ.length]; }
       var dv = DIRVIEW[this.dirIdx], key = dv.v + ':' + anim + ':' + k;
       if (key !== this.curFrame) { this.curFrame = key; this.player.setFrame(key); }
       if (this.player.flipX !== dv.flip) this.player.setFlipX(dv.flip);
       this.placePlayer();
+      this.updateHeld(time);
 
       this.updateFishing(time, paused ? 0 : dt);
       this.updateHud();
@@ -2098,8 +2278,7 @@ function createSceneClass() {
 
       // joran + senar
       var rg = this.rodG; rg.clear().setDepth(this.foot.y + 2);
-      var left = Math.cos(g.ang) < 0;
-      this.rod.setVisible(true).setPosition(g.hand.x, g.hand.y).setRotation(left ? g.ang - Math.PI : g.ang).setFlipX(left).setDepth(this.foot.y + 2);
+      this.placeRod(g.hand, g.ang, this.foot.y + 2);
       rg.lineStyle(0.7, (st === 'reel' && f.prog < 0.3) ? 0xff5252 : 0xffffff, 0.85); rg.beginPath(); rg.moveTo(g.tip.x, g.tip.y);
       for (var k = 1; k <= 14; k++) {
         var t = k / 14;
@@ -2143,6 +2322,8 @@ function start() {
   initButtons();
   resetJoy();
   UI.setCoins(false); UI.setBag();
+  Hotbar.build(); Hotbar.render();
+  if (Save.migrated > 0) UI.toast('<div>Tas ikan kini punya 50 kotak. ' + Save.migrated + ' ikan berlebih otomatis dijual.</div>', '#ffd54a', false, 3200);
 
   if (typeof Phaser === 'undefined') {
     $('loading').textContent = 'Phaser gagal dimuat. Periksa internet, atau taruh phaser.min.js di folder yang sama.';
@@ -2164,7 +2345,7 @@ function start() {
 window.__TF = {
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
-  makeFishCanvas: makeFishCanvas, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID
+  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID
 };
 
 start();

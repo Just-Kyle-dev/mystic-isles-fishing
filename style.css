@@ -97,14 +97,14 @@ html, body {
 @keyframes glow { from { box-shadow: 0 0 14px var(--rc); } to { box-shadow: 0 0 40px var(--rc); } }
 
 #spotLabel {
-  left: 50%; bottom: 18px; transform: translateX(-50%);
+  left: 50%; bottom: 128px; transform: translateX(-50%);
   display: none; padding: 6px 18px; font-size: 18px; font-weight: 700;
   background: rgba(8, 36, 52, .78); border: 2px solid #5fe0e6; border-radius: 999px;
 }
 #spotLabel.show { display: block; }
 
 #hint {
-  left: 50%; bottom: 62px; transform: translateX(-50%);
+  left: 50%; bottom: 128px; transform: translateX(-50%);
   display: none; max-width: 760px; padding: 8px 20px; text-align: center; font-size: 18px; font-weight: 600;
   background: rgba(8, 36, 52, .78); border-radius: 12px;
 }
@@ -248,3 +248,50 @@ html, body {
   color: #fff; font: 800 18px 'Trebuchet MS', Arial, sans-serif; letter-spacing: .5px; text-shadow: 0 2px 0 rgba(0,0,0,.5);
 }
 #btnRun.on { transform: translateY(5px); box-shadow: 0 1px 0 #083a52, 0 0 0 4px rgba(255,255,255,.4); filter: brightness(1.12); }
+
+/* ---------- Hotbar: joran + 6 ikan ---------- */
+#hotbar { left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; z-index: 6; }
+#hbName {
+  left: 50%; bottom: 100px; transform: translateX(-50%); min-width: 120px; text-align: center; pointer-events: none; z-index: 6;
+  font-size: 17px; font-weight: 800; text-shadow: 0 2px 0 #000, 0 0 6px rgba(0,0,0,.7); letter-spacing: .3px;
+}
+.hb {
+  position: relative; width: 72px; height: 72px; padding: 0; cursor: pointer; touch-action: none; box-sizing: border-box;
+  border-radius: 12px; border: 4px solid #8a6a38; color: #fff;
+  background: radial-gradient(ellipse at 50% 36%, #1b6179 0%, #0b2a38 80%);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.4), 0 4px 0 #3a2a12, 0 6px 8px rgba(0,0,0,.35);
+  transition: transform .12s, border-color .12s;
+}
+.hb img { position: absolute; left: 50%; top: 46%; width: 52px; height: auto; transform: translate(-50%, -50%); image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); pointer-events: none; }
+.hb.rod img { width: 58px; transform: translate(-50%, -50%) rotate(-28deg); }
+.hb .hk { position: absolute; left: 6px; top: 2px; font: 800 14px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; text-shadow: 0 1px 0 #000; pointer-events: none; }
+.hb .hr { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 5px; border-radius: 3px; background: var(--rc, transparent); opacity: .95; pointer-events: none; }
+.hb.empty { opacity: .5; border-color: #5a4626; border-style: dashed; }
+.hb.empty .hr { display: none; }
+.hb.sel { border-color: #ffd54a; transform: translateY(-8px); box-shadow: inset 0 0 0 2px rgba(0,0,0,.3), 0 0 0 3px rgba(255,213,74,.45), 0 6px 0 #3a2a12, 0 0 18px rgba(255,213,74,.5); }
+.hb:active { filter: brightness(1.2); }
+
+/* ---------- Tas ikan: 50 kotak, 1 ikan per kotak ---------- */
+.tabs { display: flex; gap: 8px; margin-left: auto; margin-right: 18px; }
+.tab { padding: 8px 20px; cursor: pointer; font: 800 19px 'Trebuchet MS', Arial, sans-serif; color: #b9e6ee; background: #0b2f40; border: 3px solid #2c6a80; border-radius: 10px; }
+.tab.on { color: #fff; background: linear-gradient(#2a8fb0, #176a88); border-color: #5fe0e6; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.pb[hidden] { display: none; }
+.gridWrap { flex: none; display: flex; flex-direction: column; gap: 10px; }
+#slotGrid { display: grid; grid-template-columns: repeat(10, 64px); gap: 6px; }
+#slotHint { font-size: 16px; font-weight: 600; opacity: .8; text-align: center; }
+.slot {
+  position: relative; width: 64px; height: 64px; box-sizing: border-box; cursor: pointer; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 38%, #174f63 0%, #0a2733 80%); border: 3px solid #7a5c30;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.4), 0 3px 0 #33240f;
+}
+.slot::before, .slot::after { content: ''; position: absolute; width: 6px; height: 6px; background: #d9b266; border-radius: 1px; box-shadow: 0 1px 0 #6b4a1c; }
+.slot::before { left: -3px; top: -3px; }
+.slot::after { right: -3px; bottom: -3px; }
+.slot.has { background: radial-gradient(ellipse at 50% 38%, #1f6a85 0%, #0d3345 80%); }
+.slot.hot { border-color: #3fb0bd; }
+.slot img { width: 46px; height: auto; margin-top: -5px; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); pointer-events: none; }
+.slot .rb { position: absolute; left: 8px; right: 8px; bottom: 5px; height: 4px; border-radius: 2px; background: var(--rc); }
+.slot .sk { position: absolute; left: 4px; top: 1px; font: 800 12px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; text-shadow: 0 1px 0 #000; }
+.slot.sel { border-color: #ffd54a; box-shadow: inset 0 0 0 2px rgba(0,0,0,.3), 0 0 0 3px rgba(255,213,74,.45), 0 3px 0 #33240f; }
+.slot.mv { outline: 3px dashed #5fe0e6; outline-offset: 1px; }

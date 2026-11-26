@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06222c">
 <title>Tropical Fishing Adventure</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -31,6 +31,9 @@
     <div id="spotLabel"></div>
     <div id="hint"></div>
 
+    <div id="hbName"></div>
+    <div id="hotbar"></div>
+
     <div id="joyZone"></div>
     <div id="joyBase"><div id="joyKnob"></div></div>
 
@@ -42,8 +45,16 @@
   <div id="modal" class="hidden">
     <!-- INVENTORY -->
     <div class="panel" id="panelInv" hidden>
-      <div class="ph"><h2>Inventory</h2><button class="x" type="button" data-close>X</button></div>
-      <div class="pb">
+      <div class="ph">
+        <h2>Tas Ikan</h2>
+        <div class="tabs"><button id="tabBag" class="tab on" type="button">Tas (50)</button><button id="tabCol" class="tab" type="button">Koleksi</button></div>
+        <button class="x" type="button" data-close>X</button>
+      </div>
+      <div class="pb" id="bagView">
+        <div class="gridWrap"><div id="slotGrid"></div><div id="slotHint"></div></div>
+        <div id="slotDetail" class="detail"></div>
+      </div>
+      <div class="pb" id="colView" hidden>
         <div id="invList" class="list"></div>
         <div id="invDetail" class="detail"></div>
       </div>
@@ -77,6 +88,6 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
 <script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
-<script src="game.js?v=6"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>
