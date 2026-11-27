@@ -34,13 +34,23 @@ var REEL = {                            // gain = isi bar tiap tekan, decay = ba
 var SAVE_KEY = 'tropicalFishing.save.v1';
 
 var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+/* TAMBAH RARITY BARU: (1) push id ke RARITY_ORDER, (2) isi RARITY di bawah, (3) isi XP_FISH dan REEL, (4) beri ikan dengan rarity itu di FISH.
+   minPower = power joran minimal agar rarity ini bisa muncul dari gigitan (joran lebih lemah: rarity ini tidak pernah muncul).
+   p0 = peluang (%) tanpa luck; p1 = peluang (%) saat luck maksimal. Peluang tiap rarity otomatis dinormalkan. */
 var RARITY = {
-  common:    { label: 'Common',    color: '#cfd8dc', weight: 56, window: 1.8  },
-  uncommon:  { label: 'Uncommon',  color: '#5fd56a', weight: 26, window: 1.5  },
-  rare:      { label: 'Rare',      color: '#4aa8ff', weight: 12, window: 1.25 },
-  epic:      { label: 'Epic',      color: '#c96bff', weight: 5,  window: 1.0  },
-  legendary: { label: 'Legendary', color: '#ffc23a', weight: 1,  window: 0.85 }
+  common:    { label: 'Common',    color: '#cfd8dc', window: 1.8,  minPower: 1, p0: 72,   p1: 30 },
+  uncommon:  { label: 'Uncommon',  color: '#5fd56a', window: 1.5,  minPower: 1, p0: 22,   p1: 32 },
+  rare:      { label: 'Rare',      color: '#4aa8ff', window: 1.25, minPower: 2, p0: 5.5,  p1: 25 },
+  epic:      { label: 'Epic',      color: '#c96bff', window: 1.0,  minPower: 2, p0: 0.5,  p1: 10 },
+  legendary: { label: 'Legendary', color: '#ffc23a', window: 0.85, minPower: 3, p0: 0.02, p1: 3  }
 };
+function reelOf(r) { return REEL[r] || REEL.legendary; }
+function xpBase(r) { return XP_FISH[r] || XP_FISH.legendary; }
+function maxRarity(power) {                         // rarity tertinggi yang bisa muncul untuk power joran ini
+  var best = null;
+  RARITY_ORDER.forEach(function (k) { if (RARITY[k].minPower <= power && FISH.some(function (f) { return f.rarity === k; })) best = k; });
+  return best || RARITY_ORDER[0];
+}
 
 var FISH = [
   { id: 'teri', kg: [0.02, 0.12],     name: 'Teri Pantai',        rarity: 'common',    price: 10,   c: ['#aebfcc', '#eef5fa', '#7f98a8'],
@@ -68,26 +78,27 @@ var FISH_BY_ID = {};
 FISH.forEach(function (f) { FISH_BY_ID[f.id] = f; });
 
 /* ---------- Joran (level + Coins), Skill (poin dari level), Mutasi ikan ---------- */
-/* power = tenaga tarik (bar tarik lebih mudah penuh, ikan lebih lambat melawan); luck = bonus peluang ikan langka. Dua joran boleh punya power sama tapi luck berbeda. */
+/* power = tenaga tarik (bar tarik lebih mudah penuh, ikan lebih lambat melawan) DAN batas rarity yang bisa muncul (lihat RARITY.minPower);
+   luck = bonus peluang ikan langka (skala 0-130). Dua joran boleh punya power sama tapi luck berbeda. */
 var RODS = [
   { id: 'kayu', name: 'Joran Kayu Pemula', lv: 1, price: 0, power: 1, luck: 0, accent: '#e0b06a', style: {},
     desc: 'Joran kayu sederhana. Cukup untuk belajar memancing di dermaga.' },
-  { id: 'bambu', name: 'Joran Bambu Tua', lv: 5, price: 600, power: 1, luck: 2, accent: '#d6cf6a',
+  { id: 'bambu', name: 'Joran Bambu Tua', lv: 5, price: 600, power: 1, luck: 20, accent: '#d6cf6a',
     style: { b0: '#b8b04a', b1: '#efe58a', b2: '#6f6a24', b3: '#9a933a', b4: '#857f2c', w0: '#3f5a2a', w1: '#567a38', w2: '#6e9648', wh0: '#7fae58', wh1: '#a5d070', wd: '#22361a', wm: '#2f4a20' },
     desc: 'Bambu pilihan yang diyakini membawa hoki. Tenaganya sama dengan joran kayu, tapi lebih beruntung.' },
-  { id: 'fiber', name: 'Joran Fiber Biru', lv: 10, price: 2200, power: 2, luck: 3, accent: '#59b6ff',
+  { id: 'fiber', name: 'Joran Fiber Biru', lv: 10, price: 2200, power: 2, luck: 35, accent: '#59b6ff',
     style: { b0: '#2f7bd0', b1: '#7fc0ff', b2: '#173f78', b3: '#2468b8', b4: '#1d559a', w0: '#3a3f4a', w1: '#505766', w2: '#686f80', wh0: '#7b8396', wh1: '#a0a8ba', wd: '#1b1e25', wm: '#2a2e38',
       m0: '#cfd6e2', m1: '#ffffff', m2: '#7f8798', m3: '#aab2c2', r0: '#c4cbd8', r1: '#8f98ab', r2: '#7a8396', r3: '#eef2fa', r4: '#5b6479', r5: '#9aa3b6', r6: '#dfe5f0', r7: '#6a7388' },
     desc: 'Serat fiber ringan dan lentur. Tarikannya lebih kuat dari joran kayu.' },
-  { id: 'karbon', name: 'Joran Karbon Hitam', lv: 18, price: 7500, power: 3, luck: 5, accent: '#ff6b6b',
+  { id: 'karbon', name: 'Joran Karbon Hitam', lv: 18, price: 7500, power: 3, luck: 55, accent: '#ff6b6b',
     style: { b0: '#2d3037', b1: '#6c7280', b2: '#121318', b3: '#23262c', b4: '#1b1d22', w0: '#7a1f1f', w1: '#a02828', w2: '#c23a3a', wh0: '#d85a5a', wh1: '#f08a8a', wd: '#4a1010', wm: '#5e1818',
       m0: '#c9ccd6', m1: '#ffffff', m2: '#6f7384', m3: '#a3a7b6', r0: '#4a4f5c', r1: '#2b2e38', r2: '#383c48', r3: '#9aa0b0', r4: '#1c1e26', r5: '#6a6f7e', r6: '#b0b5c4', r7: '#3c404c' },
     desc: 'Kuat, kaku, dan peka terhadap gigitan. Pilihan nelayan berpengalaman.' },
-  { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 8, accent: '#6fe3d2',
+  { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 90, accent: '#6fe3d2',
     style: { b0: '#5fa8b8', b1: '#bff0f8', b2: '#2a5f70', b3: '#4a8fa0', b4: '#3a7788', w0: '#2a3a48', w1: '#3c5266', w2: '#506a82', wh0: '#6a88a4', wh1: '#8fb0cc', wd: '#141e28', wm: '#1e2c3a',
       m0: '#e6e8f0', m1: '#ffffff', m2: '#8a90a2', m3: '#c0c5d4', r0: '#9fe6f0', r1: '#4aa0b4', r2: '#62bcd0', r3: '#e6fcff', r4: '#2f7488', r5: '#bfeaf2', r6: '#f2feff', r7: '#4a8fa0' },
     desc: 'Power sama seperti joran karbon, tetapi diberkahi luck jauh lebih besar.' },
-  { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 12, accent: '#d28cff',
+  { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 130, accent: '#d28cff',
     style: { b0: '#b03ad0', b1: '#f08aff', b2: '#5a1a78', b3: '#9a2cba', b4: '#7e2298', w0: '#3a1a5a', w1: '#552a80', w2: '#6e3ca0', wh0: '#8a58c0', wh1: '#b088e0', wd: '#20103a', wm: '#2c164a',
       m0: '#ffd34a', m1: '#fff7b0', m2: '#b8860b', m3: '#e6b422', r0: '#ffd34a', r1: '#b8860b', r2: '#e6b422', r3: '#fff7b0', r4: '#7a5a08', r5: '#ffe27a', r6: '#fff2b0', r7: '#9a7410' },
     desc: 'Joran legendaris bersisik pelangi. Tenaga tertinggi dan keberuntungan terbaik.' }
@@ -107,32 +118,83 @@ MUTS.forEach(function (m) { MUT_BY_ID[m.id] = m; });
 function mutMult(id) { return id && MUT_BY_ID[id] ? MUT_BY_ID[id].mult : 1; }
 function mutTag(id) { return id && MUT_BY_ID[id] ? '<span style="color:' + MUT_BY_ID[id].color + ';text-shadow:0 0 6px ' + MUT_BY_ID[id].color + '">[' + MUT_BY_ID[id].name + ']</span> ' : ''; }
 
-var SKILL_COST = [1, 1, 2, 2, 3, 3];                 // poin untuk tingkat 1..6 (1 poin didapat tiap naik level)
+var SKILL_COST = [1, 2, 3, 4, 5, 6];                 // poin untuk tingkat 1..6 (1 poin didapat tiap naik level; satu jalur penuh = 21 poin)
 var SKILL_ORDER = ['luck', 'mut', 'big', 'swift'];
+function fmtP(v) { return String(v).replace('.', ','); }
 var SKILLS = {
-  luck:  { name: 'Hoki', color: '#6fe36f', val: [0, 2, 4, 6, 8, 11, 14],
+  luck:  { name: 'Hoki', color: '#6fe36f', val: [0, 6, 13, 21, 31, 44, 60],
     perks: ['Jimat Kecil', 'Hari Cerah', 'Angin Baik', 'Berkah Laut', 'Bintang Nelayan', 'Dewi Fortuna'],
-    eff: function (v) { return 'Luck +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan luck joran).' },
-  mut:   { name: 'Mutasi', color: '#d28cff', val: [3, 5, 7, 9, 11, 14, 18],
+    eff: function (v) { return 'Luck +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan luck joran dan umpan; makin tinggi, tambahannya makin kecil).' },
+  mut:   { name: 'Mutasi', color: '#d28cff', val: [0, 0.5, 1, 1.6, 2.3, 3.1, 4],
     perks: ['Air Aneh', 'Arus Misterius', 'Cahaya Ganjil', 'Pasang Kosmik', 'Gelombang Gen', 'Evolusi'],
-    eff: function (v) { return 'Peluang mutasi ' + v + '%'; }, desc: 'Ikan bermutasi (Albino, Emas, Kristal, Neon, Kosmik) dan harganya berlipat.' },
-  big:   { name: 'Ikan Besar', color: '#ff9a4a', val: [0, 10, 20, 30, 40, 50, 60],
+    eff: function (v) { return 'Mutasi +' + fmtP(v) + '%'; }, desc: 'Menambah peluang ikan bermutasi (dasar 0,5%). Harga mutasi berlipat.' },
+  big:   { name: 'Ikan Besar', color: '#ff9a4a', val: [0, 2, 5, 8, 12, 16, 20],
     perks: ['Umpan Gemuk', 'Lengan Kuat', 'Mata Elang', 'Kail Raksasa', 'Pemburu Raksasa', 'Raja Samudra'],
-    eff: function (v) { return 'Peluang ikan jumbo ' + v + '%'; }, desc: 'Ikan yang tertangkap cenderung lebih berat, jadi lebih mahal dan XP lebih besar.' },
-  swift: { name: 'Tangkas', color: '#59b6ff', val: [1, 1.08, 1.16, 1.24, 1.32, 1.4, 1.5], wait: [1, 0.93, 0.86, 0.8, 0.74, 0.68, 0.6],
+    eff: function (v) { return 'Jumbo +' + v + '%'; }, desc: 'Menambah peluang ikan jumbo (berat mendekati batas atas jenisnya; dasar 0,5%).' },
+  swift: { name: 'Tangkas', color: '#59b6ff', val: [1, 1.04, 1.08, 1.12, 1.16, 1.2, 1.25], wait: [1, 0.96, 0.92, 0.88, 0.84, 0.8, 0.75],
     perks: ['Tangan Cekatan', 'Refleks', 'Sabar', 'Fokus', 'Insting', 'Kilat'],
     eff: function (v, i) { return 'Tarik +' + Math.round((v - 1) * 100) + '% | Tunggu -' + Math.round((1 - SKILLS.swift.wait[i]) * 100) + '%'; },
-    desc: 'Ikan menggigit lebih cepat dan kamu punya waktu lebih longgar untuk menarik.' }
+    desc: 'Ikan menggigit sedikit lebih cepat dan waktu menarik sedikit lebih longgar.' }
 };
 function skillTier(k) { return Math.max(0, Math.min(6, (Save.data.skills && Save.data.skills[k]) | 0)); }
 function skillVal(k) { return SKILLS[k].val[skillTier(k)]; }
 function skillSpent() { var s = 0; SKILL_ORDER.forEach(function (k) { for (var t = 0; t < skillTier(k); t++) s += SKILL_COST[t]; }); return s; }
 function skillPoints() { return Math.max(0, levelInfo(Save.data.xp).level - 1 - skillSpent()); }
 function curRod() { return RODS_BY_ID[Save.data.rod] || RODS[0]; }
-function totalLuck() { return curRod().luck + skillVal('luck'); }
-function rollMut() {                                 // null = ikan normal
-  if (Math.random() * 100 >= skillVal('mut')) return null;
-  var t = skillTier('mut'), ws = MUTS.map(function (m, i) { return m.w * (1 + t * 0.12 * i); }), tot = 0, i;
+
+/* ---------- Umpan: dibeli per paket, terpakai 1 per lemparan, efeknya dijumlah dengan joran dan skill ---------- */
+var BAIT_PACK = 10, BAIT_MAX = 999;
+var BAITS = [
+  { id: 'cacing',    name: 'Cacing Tanah',     lv: 1,  price: 100,   luck: 5,  mut: 0,   big: 0, accent: '#e58a9a', desc: 'Umpan paling murah dan umum. Sedikit menambah hoki.' },
+  { id: 'udang',     name: 'Udang Segar',      lv: 4,  price: 400,   luck: 12, mut: 0,   big: 0, accent: '#ff9a5a', desc: 'Ikan karang suka sekali udang segar. Hoki lebih baik dari cacing.' },
+  { id: 'larva',     name: 'Larva Cahaya',     lv: 8,  price: 1200,  luck: 0,  mut: 1.5, big: 0, accent: '#c8ff6a', desc: 'Larva berpendar aneh yang memancing ikan bermutasi.' },
+  { id: 'terib',     name: 'Umpan Teri Besar', lv: 12, price: 1500,  luck: 10, mut: 0,   big: 5, accent: '#cfe3f0', desc: 'Teri besar mengundang ikan bertubuh besar.' },
+  { id: 'gelombang', name: 'Umpan Gelombang',  lv: 16, price: 3500,  luck: 20, mut: 1,   big: 0, accent: '#4aa8ff', desc: 'Berdenyut mengikuti ombak. Menambah hoki dan sedikit peluang mutasi.' },
+  { id: 'emas',      name: 'Umpan Emas',       lv: 25, price: 9000,  luck: 35, mut: 2,   big: 5, accent: '#ffd34a', desc: 'Berkilau emas. Hoki besar, mutasi, dan ikan jumbo sekaligus.' },
+  { id: 'kosmik',    name: 'Umpan Kosmik',     lv: 40, price: 25000, luck: 50, mut: 4,   big: 0, accent: '#b48cff', desc: 'Umpan dari bintang jatuh. Hoki dan peluang mutasi tertinggi.' }
+];
+var BAITS_BY_ID = {};
+BAITS.forEach(function (b) { BAITS_BY_ID[b.id] = b; });
+function baitCount(id) { return (Save.data.baits && Save.data.baits[id]) | 0; }
+function activeBait() { var b = BAITS_BY_ID[Save.data.bait]; return b && baitCount(b.id) > 0 ? b : null; }
+function baitSummary(b) {
+  var t = [];
+  if (b.luck) t.push('Luck +' + b.luck);
+  if (b.mut) t.push('Mutasi +' + fmtP(b.mut) + '%');
+  if (b.big) t.push('Jumbo +' + b.big + '%');
+  return t.join(' | ');
+}
+
+/* ---------- Luck -> peluang rarity ----------
+   Luck total = joran + skill + umpan (+ bonus lemparan: lempar penuh = 0, lemparan pendek malah mengurangi sampai -20).
+   Kurva makin lambat naiknya (diminishing). Luck 240 = maksimal => peluang p1 tiap rarity; luck 0 => p0. */
+var LUCK_REF = 240, LUCK_TAU = 150, CAST_LUCK = 20;
+function totalLuck(bait) {
+  if (bait === undefined) bait = activeBait();
+  return curRod().luck + skillVal('luck') + (bait ? bait.luck : 0);
+}
+function luckG(L) {
+  var g = (1 - Math.exp(-L / LUCK_TAU)) / (1 - Math.exp(-LUCK_REF / LUCK_TAU));
+  return Math.max(-0.35, Math.min(1, g));
+}
+function rarityChances(L, power) {                    // [{r, p}] p = 0..1, hanya rarity yang boleh muncul untuk power joran ini
+  var g = luckG(L), list = [], tot = 0;
+  RARITY_ORDER.forEach(function (k) {
+    var R = RARITY[k], ok = power >= R.minPower && FISH.some(function (f) { return f.rarity === k; });
+    var w = ok ? Math.pow(R.p0, 1 - g) * Math.pow(R.p1, g) : 0;
+    list.push({ r: k, w: w }); tot += w;
+  });
+  if (tot <= 0) { list[0].w = 1; tot = 1; }
+  return list.map(function (e) { return { r: e.r, p: e.w / tot }; });
+}
+var MUT_BASE = 0.5, JUMBO_BASE = 0.5;                 // peluang dasar (%)
+function mutChance(bait) { if (bait === undefined) bait = activeBait(); return MUT_BASE + skillVal('mut') + (bait ? bait.mut : 0); }
+function jumboChance(bait) { if (bait === undefined) bait = activeBait(); return JUMBO_BASE + skillVal('big') + (bait ? bait.big : 0); }
+
+function rollMut(bait) {                             // null = ikan normal
+  if (bait === undefined) bait = activeBait();
+  if (Math.random() * 100 >= mutChance(bait)) return null;
+  var t = Math.min(8, skillTier('mut') + (bait ? Math.round(bait.mut) : 0)), ws = MUTS.map(function (m, i) { return m.w * (1 + t * 0.12 * i); }), tot = 0, i;
   ws.forEach(function (v) { tot += v; });
   var r = Math.random() * tot;
   for (i = 0; i < MUTS.length; i++) { r -= ws[i]; if (r <= 0) return MUTS[i].id; }
@@ -165,13 +227,13 @@ function fishScale(kg) {                            // ukuran tampilan ikan menu
 function sizeT(f, kg) { var r = f.kg[1] - f.kg[0]; return r > 0 ? Math.max(0, Math.min(1, (kg - f.kg[0]) / r)) : 0; }   // 0 = terkecil, 1 = terbesar
 function sizeFactor(f, kg) { return 0.5 + 1.5 * sizeT(f, kg); }      // 0,5x (terkecil) sampai 2x (terbesar)
 function priceOf(id, kg) { var f = FISH_BY_ID[id]; return Math.max(1, Math.round(f.price * sizeFactor(f, kg))); }
-function xpOf(f, kg) { return Math.max(1, Math.round(XP_FISH[f.rarity] * sizeFactor(f, kg))); }
+function xpOf(f, kg) { return Math.max(1, Math.round(xpBase(f.rarity) * sizeFactor(f, kg))); }
 function defaultKg(f) { return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) / 3); }   // berat yang harganya = harga dasar (dipakai untuk save lama)
-function rollKg(f, luck, bigTier) {                 // ikan besar jarang; lemparan jauh & skill Ikan Besar menambah peluang ikan jumbo
-  bigTier = bigTier | 0;
-  var ex = Math.max(0.5, 1.7 - 0.5 * Math.min(1, luck || 0) - 0.08 * bigTier);
-  var t = Math.pow(Math.random(), ex);
-  if (bigTier && Math.random() * 100 < SKILLS.big.val[bigTier]) t = Math.max(t, Math.pow(Math.random(), ex));
+function rollKg(f, power, jumboPct) {               // ikan jumbo (t >= 0,85) sangat jarang; lemparan jauh sedikit membantu
+  power = Math.max(0, Math.min(1, power || 0));
+  var t;
+  if (Math.random() * 100 < (jumboPct || 0)) t = 0.85 + 0.15 * Math.random();
+  else t = 0.85 * Math.pow(Math.random(), Math.max(1.6, 2.4 - 0.5 * power));
   return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) * t);
 }
 function blankKgs() { var r = [], i; for (i = 0; i < 50; i++) r.push(null); return r; }
@@ -219,7 +281,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
 function cleanMuts(arr, slots) { var r = [], i; for (i = 0; i < NSLOT; i++) { var v = Array.isArray(arr) ? arr[i] : null; r.push(slots[i] && v && MUT_BY_ID[v] ? v : null); } return r; }
 function blankData() {
   return { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), muts: blankKgs(), record: {}, zoom: ZOOM_MAX,
-    rod: 'kayu', rods: ['kayu'], skills: { luck: 0, mut: 0, big: 0, swift: 0 } };
+    rod: 'kayu', rods: ['kayu'], skills: { luck: 0, mut: 0, big: 0, swift: 0 }, baits: {}, bait: null };
 }
 var Save = {
   data: blankData(),
@@ -241,6 +303,10 @@ var Save = {
       this.data.rod = (RODS_BY_ID[d.rod] && ro.indexOf(d.rod) >= 0) ? d.rod : 'kayu';
       var sk = d.skills && typeof d.skills === 'object' ? d.skills : {};
       this.data.skills = { luck: Math.max(0, Math.min(6, sk.luck | 0)), mut: Math.max(0, Math.min(6, sk.mut | 0)), big: Math.max(0, Math.min(6, sk.big | 0)), swift: Math.max(0, Math.min(6, sk.swift | 0)) };
+      var bt = {};
+      if (d.baits && typeof d.baits === 'object') BAITS.forEach(function (b) { var n = Math.floor(+d.baits[b.id] || 0); if (n > 0) bt[b.id] = Math.min(BAIT_MAX, n); });
+      this.data.baits = bt;
+      this.data.bait = (BAITS_BY_ID[d.bait] && bt[d.bait] > 0) ? d.bait : null;
       this.data.record = cleanRecord(d.record);
       this.data.zoom = (+d.zoom >= ZOOM_MIN && +d.zoom <= ZOOM_MAX) ? Math.round(+d.zoom * 100) / 100 : ZOOM_MAX;
       syncInv();
@@ -250,7 +316,7 @@ var Save = {
       this.data.name = cleanName(d.name);
       if (d.xp === undefined) {                        // save lama: hitung XP dari ikan yang pernah ditangkap
         var xp0 = 0, cg = this.data.caught;
-        FISH.forEach(function (f) { if (cg[f.id] > 0) xp0 += cg[f.id] * XP_FISH[f.rarity] + XP_FIRST; });
+        FISH.forEach(function (f) { if (cg[f.id] > 0) xp0 += cg[f.id] * xpBase(f.rarity) + XP_FIRST; });
         this.data.xp = xp0;
       } else this.data.xp = Math.max(0, Math.floor(+d.xp || 0));
     } catch (e) { /* abaikan */ }
@@ -1478,6 +1544,43 @@ function makeRod(st) {
   R(9, 23, 3, 1, Q.r5); R(8, 24, 2, 1, Q.r7); R(7, 22, 2, 2, Q.r5);
   return { canvas: c, ox: 14 / LW, oy: 8.5 / LH };
 }
+function makeBait(id) {                                 // ikon umpan 16x16 (dikontur & dibesarkan lewat CSS pixelated)
+  var cv = mkCanvas(16, 16), c = cv[0], g = cv[1], x, y, k;
+  function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a, b, w, h); }
+  if (id === 'cacing') {
+    for (x = 1; x <= 14; x++) {
+      y = 7 + Math.round(2.6 * Math.sin(x * 0.8));
+      R(x, y, 1, 3, (x % 3) ? '#e58a9a' : '#c4566c'); R(x, y, 1, 1, '#f9c2cd'); R(x, y + 2, 1, 1, '#a0405a');
+    }
+    R(14, 7 + Math.round(2.6 * Math.sin(14 * 0.8)) + 1, 1, 1, '#2a1018');
+  } else if (id === 'udang') {
+    for (k = 0; k <= 9; k++) {
+      var a1 = 3.5 + k * 0.3, bx = Math.round(8 + Math.cos(a1) * 5.5), by = Math.round(8 + Math.sin(a1) * 4.5);
+      R(bx - 1, by - 1, 3, 3, k % 2 ? '#ff8a4a' : '#ffa86a'); R(bx - 1, by - 1, 3, 1, '#ffd0a0');
+    }
+    R(1, 6, 3, 3, '#ff9a5a'); R(2, 7, 1, 1, '#111'); R(0, 4, 1, 3, '#ffb08a'); R(1, 3, 1, 2, '#ffb08a');
+    R(12, 11, 3, 1, '#ff6a2a'); R(13, 12, 2, 2, '#ff6a2a'); R(11, 12, 1, 2, '#ff7a3a');
+  } else if (id === 'larva') {
+    R(0, 4, 16, 8, 'rgba(210,255,130,0.28)'); R(2, 3, 12, 10, 'rgba(210,255,130,0.22)');
+    for (k = 0; k < 5; k++) { R(3 + k * 2, 6 + (k === 2 ? -1 : 0), 3, 5 + (k === 2 ? 1 : 0), k % 2 ? '#a8f04a' : '#d6ff7a'); }
+    R(11, 7, 2, 2, '#111'); R(3, 6, 8, 1, '#f2ffb0'); R(4, 10, 6, 1, '#78c030');
+  } else if (id === 'terib') {
+    for (x = 3; x <= 13; x++) { var hh = Math.round(3 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 8) / 5.6, 2)))); R(x, 8 - hh, 1, hh * 2, '#bcd0de'); R(x, 8, 1, Math.max(1, hh), '#eef6fb'); }
+    for (x = 0; x <= 3; x++) R(x, 8 - (3 - x), 1, (3 - x) * 2 + 1, '#7f98a8');
+    R(11, 7, 2, 2, '#fff'); R(12, 8, 1, 1, '#111'); R(7, 4, 3, 1, '#7f98a8');
+  } else if (id === 'gelombang') {
+    disc(g, 8, 8, 6, '#17609a', 1); disc(g, 8, 8, 5, '#2a8fd9', 1);
+    R(4, 7, 3, 1, '#bfe6ff'); R(6, 6, 3, 1, '#ffffff'); R(9, 7, 3, 1, '#bfe6ff'); R(5, 10, 6, 1, '#7ac4f5'); R(4, 5, 2, 1, '#7ac4f5');
+  } else if (id === 'emas') {
+    for (x = 2; x <= 13; x++) { var hg = Math.round(3.4 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 7.5) / 6, 2)))); R(x, 7 - hg, 1, hg * 2, '#e0a800'); R(x, 7 - hg, 1, Math.max(1, hg - 1), '#ffe27a'); }
+    R(0, 4, 3, 7, '#c88a00'); R(12, 6, 2, 2, '#fff'); R(13, 7, 1, 1, '#111');
+    R(7, 10, 1, 4, '#9aa3b0'); R(7, 14, 3, 1, '#9aa3b0'); R(9, 12, 1, 2, '#9aa3b0'); R(5, 4, 4, 1, '#fff6c0');
+  } else {                                              // kosmik
+    disc(g, 8, 8, 6, '#2a1470', 1); disc(g, 8, 8, 5, '#5a2fa0', 1); disc(g, 7, 7, 2, '#8a5cd8', 1);
+    R(8, 2, 1, 5, '#fff'); R(6, 4, 5, 1, '#fff'); R(11, 9, 1, 3, '#e0d0ff'); R(10, 10, 3, 1, '#e0d0ff'); R(3, 10, 1, 1, '#fff'); R(5, 12, 1, 1, '#b48cff');
+  }
+  return { canvas: c, ox: 0.5, oy: 0.5 };
+}
 function makeFist() {                                   // kepalan tangan kecil (1 px) di atas gagang
   var cv = mkCanvas(6, 5), c = cv[0], g = cv[1];
   function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a, b, w, h); }
@@ -1516,10 +1619,11 @@ function makeFishCanvas(f) {
   if (f.rarity === 'legendary') { px(g, 20, 2, 1, 1, '#fff'); px(g, 2, 11, 1, 1, '#fff'); px(g, 22, 8, 1, 1, '#fff'); }
   return c;
 }
-var ICON = {}, ICON_RODS = {};
+var ICON = {}, ICON_RODS = {}, ICON_BAITS = {};
 function buildIcons() {
   FISH.forEach(function (f) { ICON[f.id] = makeFishCanvas(f).toDataURL(); });
   RODS.forEach(function (r) { ICON_RODS[r.id] = outlined(makeRod(r.style), '#2a1408', 1).canvas.toDataURL(); });
+  BAITS.forEach(function (b) { ICON_BAITS[b.id] = outlined(makeBait(b.id), '#16121f', 1).canvas.toDataURL(); });
 }
 
 /* =====================================================================
@@ -1556,7 +1660,8 @@ function totalValue() {
   var v = 0; Save.data.slots.forEach(function (id, i) { if (id) v += slotPrice(i); }); return v;
 }
 function fmt(n) { return Math.floor(n).toLocaleString('id-ID'); }
-function rarTag(r) { return '<span class="r-' + r + '">' + RARITY[r].label + '</span>'; }
+function rarTag(r) { return '<span class="r-' + r + '" style="color:' + RARITY[r].color + '">' + RARITY[r].label + '</span>'; }
+function fmtPct(v) { var d = v >= 10 ? 0 : (v >= 1 ? 1 : 2); return v.toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%'; }
 
 var UI = {
   cache: {},
@@ -1701,7 +1806,7 @@ function initKeyboard() {
     else if (e.code === 'KeyQ') { if (!Ctl.modal) cycleRod(); }
     else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (!Ctl.modal) changeZoom(ZOOM_STEP); }
     else if (e.code === 'Minus' || e.code === 'NumpadSubtract') { if (!Ctl.modal) changeZoom(-ZOOM_STEP); }
-    else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
+    else if (/^Digit[1-8]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
     else if (e.code === 'Escape') Modal.close();
   });
   window.addEventListener('keyup', function (e) { if (e.target && e.target.tagName === 'INPUT') return; if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishUp(); } if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
@@ -1716,10 +1821,10 @@ var Hotbar = {
   build: function () {
     var h = $('hotbar'), self = this;
     h.innerHTML = ''; this.els = [];
-    for (var i = 0; i <= NHOT; i++) (function (i) {
+    for (var i = 0; i <= NHOT + 1; i++) (function (i) {
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'hb';
-      b.innerHTML = '<span class="hk">' + (i + 1) + '</span><img alt=""><i class="hr"></i>';
+      b.innerHTML = '<span class="hk">' + (i + 1) + '</span><img alt=""><i class="hr"></i><b class="hq"></b>';
       b.addEventListener('pointerdown', function (e) { e.preventDefault(); self.pick(i); });
       h.appendChild(b); self.els.push(b);
     })(i);
@@ -1728,8 +1833,18 @@ var Hotbar = {
   render: function () {
     if (!this.els.length) return;
     if (Equip.sel >= 1 && !Save.data.slots[Equip.sel - 1]) Equip.sel = 0;
-    for (var i = 0; i <= NHOT; i++) {
-      var b = this.els[i], img = b.children[1], id = i === 0 ? 'rod' : Save.data.slots[i - 1];
+    for (var i = 0; i <= NHOT + 1; i++) {
+      var b = this.els[i], img = b.children[1];
+      if (i === NHOT + 1) {                          // slot terakhir = umpan aktif (tekan 8 / ketuk untuk ganti)
+        var ab = activeBait(), bcls = 'hb bait' + (ab ? ' has' : ' empty');
+        if (b.className !== bcls) b.className = bcls;
+        if (ab) {
+          if (img.getAttribute('src') !== ICON_BAITS[ab.id]) img.setAttribute('src', ICON_BAITS[ab.id]);
+          img.style.visibility = 'visible'; b.style.setProperty('--rc', ab.accent); b.children[3].textContent = baitCount(ab.id);
+        } else { img.style.visibility = 'hidden'; b.children[3].textContent = ''; }
+        continue;
+      }
+      var id = i === 0 ? 'rod' : Save.data.slots[i - 1];
       var cls = 'hb' + (i === 0 ? ' rod has' : (id ? ' has' : ' empty')) + (Equip.sel === i ? ' sel' : '');
       if (b.className !== cls) b.className = cls;
       if (id) {
@@ -1740,7 +1855,8 @@ var Hotbar = {
       } else img.style.visibility = 'hidden';
     }
     var sid = heldFishId();
-    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Power ' + curRod().power + ' | Luck +' + totalLuck() + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
+    var abn = activeBait();
+    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Power ' + curRod().power + ' | Luck +' + totalLuck() + ' | Umpan: ' + (abn ? abn.name + ' x' + baitCount(abn.id) : 'tidak ada') + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
   },
   canSwitch: function () {
     var st = scene && scene.fish ? scene.fish.state : 'idle';
@@ -1753,7 +1869,7 @@ var Hotbar = {
     this.render();
     return true;
   },
-  pick: function (i) { if (Ctl.modal) return; if (i === 0 && Equip.sel === 0 && Save.data.rods.length > 1 && this.canSwitch()) { cycleRod(); return; } this.set(i); }
+  pick: function (i) { if (Ctl.modal) return; if (i === NHOT + 1) { cycleBait(); return; } if (i === 0 && Equip.sel === 0 && Save.data.rods.length > 1 && this.canSwitch()) { cycleRod(); return; } this.set(i); }
 };
 
 /* ---------- Joran: beli (Coins + level), pakai, ganti ---------- */
@@ -1763,7 +1879,7 @@ function equipRod(id) {
   if (!ownsRod(id) || Save.data.rod === id) return true;
   if (!Hotbar.canSwitch()) { UI.toast('<div>Selesaikan memancing dulu</div>', '#5fe0e6', false, 1100); return false; }
   Save.data.rod = id; Save.write(); Hotbar.render();
-  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Power ' + RODS_BY_ID[id].power + ' | Luck +' + RODS_BY_ID[id].luck + '</small></div>', RODS_BY_ID[id].accent, false, 1500);
+  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Power ' + RODS_BY_ID[id].power + ' | Luck +' + RODS_BY_ID[id].luck + '</small><small>Rarity tertinggi: ' + RARITY[maxRarity(RODS_BY_ID[id].power)].label + '</small></div>', RODS_BY_ID[id].accent, false, 1800);
   return true;
 }
 function cycleRod() {
@@ -1805,11 +1921,67 @@ function renderRodShop() {
     '<div class="tag" style="color:' + r.accent + '">' + (lock && !own ? 'Terkunci: butuh Level ' + r.lv : 'Syarat Level ' + r.lv) + '</div>' +
     '<div class="stat"><span>Power (tenaga tarik)</span><b>' + r.power + (r !== cur ? dif(r.power, cur.power) : '') + '</b></div>' +
     '<div class="stat"><span>Luck joran</span><b>+' + r.luck + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
+    '<div class="stat"><span>Rarity tertinggi</span><b>' + rarTag(maxRarity(r.power)) + '</b></div>' +
     '<div class="stat"><span>Harga</span><b>' + (r.price ? fmt(r.price) + ' Coins' : 'Gratis') + '</b></div>' +
     '<p>' + r.desc + '</p><div class="btns">' + act + '</div>';
   if ($('rodBuy')) $('rodBuy').addEventListener('click', function () { buyRod(r.id); });
   if ($('rodEquip')) $('rodEquip').addEventListener('click', function () { if (equipRod(r.id)) renderShop(); });
   $('shopSummary').textContent = 'Coins kamu: ' + fmt(d.coins) + '  |  Level ' + lv;
+}
+
+/* ---------- Umpan: pilih, ganti (hotbar 8), beli di toko ---------- */
+var baitSel = null;
+function setBait(id) { Save.data.bait = id; Save.write(); Hotbar.render(); }
+function cycleBait() {
+  var own = BAITS.filter(function (b) { return baitCount(b.id) > 0; }), cur = activeBait();
+  if (!own.length) { UI.toast('<div>Belum punya umpan<small>Beli di toko Pak Marlin, tab Umpan</small></div>', '#5fe0e6', false, 1800); return; }
+  var i = cur ? own.indexOf(cur) : -1, next = (i + 1 >= own.length) ? null : own[i + 1];   // urutan: umpan 1, 2, ... lalu tanpa umpan
+  setBait(next ? next.id : null);
+  if (next) UI.toast('<div>' + next.name + ' x' + baitCount(next.id) + '<small>' + baitSummary(next) + '</small></div>', next.accent, false, 1500);
+  else UI.toast('<div>Tanpa umpan</div>', '#5fe0e6', false, 1200);
+}
+function buyBait(id, packs) {
+  var b = BAITS_BY_ID[id], d = Save.data;
+  if (!b) return;
+  var n = BAIT_PACK * packs, cost = b.price * packs;
+  if (levelInfo(d.xp).level < b.lv) { UI.toast('<div>Butuh Level ' + b.lv + '</div>', '#ff7b7b', false, 1500); return; }
+  if (baitCount(id) + n > BAIT_MAX) { UI.toast('<div>Umpan penuh (maks ' + BAIT_MAX + ')</div>', '#ff7b7b', false, 1500); return; }
+  if (d.coins < cost) { UI.toast('<div>Coins kurang ' + fmt(cost - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
+  d.coins -= cost; d.baits[id] = baitCount(id) + n;
+  if (!activeBait()) d.bait = id;                    // belum ada umpan aktif => langsung dipakai
+  Save.write(); UI.setCoins(true); Hotbar.render();
+  npcLine = 'Terima kasih! ' + n + ' ' + b.name + ' masuk tasmu.';
+  renderShop();
+}
+function renderBaitShop() {
+  var list = $('shopList'), detail = $('shopDetail'), d = Save.data, lv = levelInfo(d.xp).level;
+  list.innerHTML = '';
+  if (!baitSel || !BAITS_BY_ID[baitSel]) baitSel = BAITS[0].id;
+  BAITS.forEach(function (b) {
+    var lock = lv < b.lv, n = baitCount(b.id), row = document.createElement('div');
+    row.className = 'row' + (baitSel === b.id ? ' sel' : '') + (lock ? ' locked' : '');
+    row.style.setProperty('--rc', b.accent);
+    row.innerHTML = '<img class="ficon baiti" src="' + ICON_BAITS[b.id] + '" alt=""><div class="fname"><b>' + b.name + '</b><span>' + baitSummary(b) + '</span></div>' +
+      '<div class="cnt">' + (lock ? 'Lv ' + b.lv : (n ? 'x' + n : fmt(b.price)) ) + (!lock ? '<small>' + (n ? 'dimiliki' : 'Coins / ' + BAIT_PACK) + '</small>' : '') + '</div>';
+    row.addEventListener('click', function () { baitSel = b.id; renderShop(); });
+    list.appendChild(row);
+  });
+  var b = BAITS_BY_ID[baitSel], lock = lv < b.lv, n = baitCount(b.id), cur = activeBait(), on = cur === b;
+  var buyDis = function (packs) { return (lock || d.coins < b.price * packs || n + BAIT_PACK * packs > BAIT_MAX) ? ' disabled' : ''; };
+  detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big baitbig" src="' + ICON_BAITS[b.id] + '" alt=""><h3>' + b.name + '</h3>' +
+    '<div class="tag" style="color:' + b.accent + '">' + (lock ? 'Terkunci: butuh Level ' + b.lv : 'Syarat Level ' + b.lv) + '</div>' +
+    '<div class="stat"><span>Luck</span><b>' + (b.luck ? '+' + b.luck : '-') + '</b></div>' +
+    '<div class="stat"><span>Peluang mutasi</span><b>' + (b.mut ? '+' + fmtP(b.mut) + '%' : '-') + '</b></div>' +
+    '<div class="stat"><span>Peluang ikan jumbo</span><b>' + (b.big ? '+' + b.big + '%' : '-') + '</b></div>' +
+    '<div class="stat"><span>Dimiliki</span><b>' + n + '</b></div>' +
+    '<p>' + b.desc + ' Terpakai 1 per lemparan.</p><div class="btns">' +
+    '<button class="btn" type="button" id="baitBuy1"' + buyDis(1) + '>Beli ' + BAIT_PACK + ' (' + fmt(b.price) + ')</button>' +
+    '<button class="btn" type="button" id="baitBuy5"' + buyDis(5) + '>Beli ' + BAIT_PACK * 5 + ' (' + fmt(b.price * 5) + ')</button>' +
+    (n > 0 ? '<button class="btn blue" type="button" id="baitUse">' + (on ? 'Lepas umpan' : 'Pakai') + '</button>' : '') + '</div>';
+  $('baitBuy1').addEventListener('click', function () { buyBait(b.id, 1); });
+  $('baitBuy5').addEventListener('click', function () { buyBait(b.id, 5); });
+  if ($('baitUse')) $('baitUse').addEventListener('click', function () { setBait(on ? null : b.id); renderShop(); });
+  $('shopSummary').textContent = 'Coins kamu: ' + fmt(d.coins) + '  |  Level ' + lv + '  |  Umpan aktif: ' + (cur ? cur.name + ' x' + baitCount(cur.id) : 'tidak ada');
 }
 
 /* ---------- Panel Skill: 4 jalur, 6 tingkat, dibuka dengan poin ---------- */
@@ -1829,7 +2001,10 @@ function renderSkills() {
   });
   $('skillCols').innerHTML = h;
   $('skillPts').textContent = 'Poin skill: ' + pts;
-  $('skillInfo').textContent = 'Luck total +' + totalLuck() + ' (joran +' + curRod().luck + ', skill +' + skillVal('luck') + ')  |  Power joran ' + curRod().power;
+  var ab = activeBait(), L = totalLuck(), ch = rarityChances(L, curRod().power);
+  $('skillInfo').innerHTML = 'Luck total +' + L + ' (joran +' + curRod().luck + ', skill +' + skillVal('luck') + ', umpan +' + (ab ? ab.luck : 0) + ') | Power ' + curRod().power +
+    ' | Mutasi ' + fmtPct(mutChance()) + ' | Jumbo ' + fmtPct(jumboChance()) + '<br>Peluang lempar penuh: ' +
+    ch.map(function (e) { return e.p > 0 ? '<span style="color:' + RARITY[e.r].color + '">' + RARITY[e.r].label + ' ' + fmtPct(e.p * 100) + '</span>' : ''; }).filter(Boolean).join(' | ');
 }
 function buySkill(k) {
   var tier = skillTier(k);
@@ -2059,9 +2234,10 @@ function sellEverything() {
   renderShop();
 }
 function renderShop() {
-  $('tabShopFish').classList.toggle('on', shopTab === 'fish'); $('tabShopRod').classList.toggle('on', shopTab === 'rod');
+  $('tabShopFish').classList.toggle('on', shopTab === 'fish'); $('tabShopRod').classList.toggle('on', shopTab === 'rod'); $('tabShopBait').classList.toggle('on', shopTab === 'bait');
   $('btnSellAll').style.display = shopTab === 'fish' ? '' : 'none';
   if (shopTab === 'rod') { renderRodShop(); return; }
+  if (shopTab === 'bait') { renderBaitShop(); return; }
   var list = $('shopList'), detail = $('shopDetail');
   list.innerHTML = '';
   var owned = FISH.filter(function (f) { return (Save.data.inv[f.id] || 0) > 0; });
@@ -2113,6 +2289,7 @@ function initButtons() {
   pn.addEventListener('focus', function () { try { pn.select(); } catch (err) { /* abaikan */ } });
   $('tabShopFish').addEventListener('click', function () { shopTab = 'fish'; renderShop(); });
   $('tabShopRod').addEventListener('click', function () { shopTab = 'rod'; npcLine = 'Joran bagus bikin tangkapan lebih besar. Butuh level dan Coins yang cukup, ya!'; renderShop(); });
+  $('tabShopBait').addEventListener('click', function () { shopTab = 'bait'; npcLine = 'Umpan dibeli per ' + BAIT_PACK + ' biji dan terpakai 1 per lemparan. Pilih yang cocok dengan tujuanmu!'; renderShop(); });
   press('btnSkill', function () { Modal.toggle('skill'); });
   press('btnHelp', function () { Modal.toggle('help'); });
   $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k')); });
@@ -2179,15 +2356,13 @@ function snapDir(dx, dy) {
   var i = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return ((i % 8) + 8) % 8;
 }
-function rollFish(luck) {
-  var mult = [1, 1 + luck * 0.5, 1 + luck * 1.5, 1 + luck * 3, 1 + luck * 4];
-  var total = 0, w = RARITY_ORDER.map(function (k, idx) { var v = RARITY[k].weight * mult[idx]; total += v; return v; });
-  var r = Math.random() * total, pick = 'common';
-  for (var i = 0; i < RARITY_ORDER.length; i++) { r -= w[i]; if (r <= 0) { pick = RARITY_ORDER[i]; break; } }
+function rollFish(L, power) {                        // L = luck total efektif, power = power joran (membatasi rarity yang boleh muncul)
+  if (power === undefined) power = curRod().power;
+  var ch = rarityChances(L || 0, power), r = Math.random(), pick = ch[0].r, i;
+  for (i = 0; i < ch.length; i++) { r -= ch[i].p; if (r <= 0) { pick = ch[i].r; break; } }
   var pool = FISH.filter(function (f) { return f.rarity === pick; });
   return pool[Math.floor(Math.random() * pool.length)];
 }
-function stars(luck) { return luck >= 0.8 ? ' ★★★' : luck >= 0.4 ? ' ★★' : luck > 0 ? ' ★' : ''; }
 
 function createSceneClass() {
   return class MainScene extends Phaser.Scene {
@@ -2519,6 +2694,13 @@ function createSceneClass() {
         this.endCharge(); return;
       }
       f.target = { gx: pt.gx, gy: pt.gy, spot: null }; f.spot = null; f.luck = f.power; f.castPower = f.power;
+      f.baitId = null;
+      var ub = activeBait();                               // umpan terpakai 1 tiap lemparan (di air)
+      if (ub) {
+        f.baitId = ub.id; Save.data.baits[ub.id] = baitCount(ub.id) - 1;
+        if (Save.data.baits[ub.id] <= 0) { delete Save.data.baits[ub.id]; Save.data.bait = null; UI.toast('<div>' + ub.name + ' habis<small>Kembali tanpa umpan</small></div>', ub.accent, false, 2000); }
+        Save.write(); Hotbar.render();
+      }
       f.state = 'casting'; f.t = 0; f.launch = null; f.caught = false;
       this.aimMark.setVisible(false); UI.setCastBar(false, 0, true);
       var g = this.rodGeometry();
@@ -2535,10 +2717,11 @@ function createSceneClass() {
       }
     }
     startBite() {
-      var f = this.fish, luck = (f.luck || 0) + totalLuck() * 0.05;   // lemparan jauh + luck joran + skill Hoki => ikan langka lebih sering
-      f.def = rollFish(luck);
-      f.kg = rollKg(f.def, luck, skillTier('big'));
-      f.mut = rollMut();
+      var f = this.fish, bait = f.baitId ? BAITS_BY_ID[f.baitId] : null, cp = f.castPower || 0;
+      var L = totalLuck(bait) + (cp - 1) * CAST_LUCK;     // luck joran + skill + umpan; lempar penuh = 0, lemparan pendek mengurangi
+      f.def = rollFish(L, curRod().power);                 // rarity di atas batas power joran tidak pernah muncul
+      f.kg = rollKg(f.def, cp, jumboChance(bait));
+      f.mut = rollMut(bait);
       f.window = RARITY[f.def.rarity].window * SKILLS.swift.val[skillTier('swift')];
       f.state = 'bite'; f.t = 0;
       this.splash(f.bx, f.by);
@@ -2557,7 +2740,7 @@ function createSceneClass() {
     }
     startReel() {
       var f = this.fish;
-      f.state = 'reel'; f.t = 0; f.prog = 0.25; f.kick = 0; f.pulls = 0; var pw = curRod().power - 1, rb = REEL[f.def.rarity];
+      f.state = 'reel'; f.t = 0; f.prog = 0.25; f.kick = 0; f.pulls = 0; var pw = curRod().power - 1, rb = reelOf(f.def.rarity);
       f.reel = { gain: rb.gain * (1 + 0.18 * pw), decay: rb.decay * (1 - 0.07 * pw) };      // power joran: tarikan lebih kuat, ikan lebih lambat menang
       this.bang.setVisible(false);
       this.reelPull();
@@ -2583,7 +2766,7 @@ function createSceneClass() {
       var kg = f.kg || defaultKg(def), mut = f.mut || null, mm = mutMult(mut), price = Math.max(1, Math.round(priceOf(def.id, kg) * mm));
       if (addFishSlot(def.id, kg, mut) < 0) { Save.data.coins += price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
       f.caughtId = def.id; f.caughtKg = kg;
-      var isRec = kg > (Save.data.record[def.id] || 0);
+      var isRec = kg > (Save.data.record[def.id] || 0), isJumbo = sizeT(def, kg) >= 0.85;
       if (isRec) Save.data.record[def.id] = kg;
       Save.data.caught[def.id] = (Save.data.caught[def.id] || 0) + 1;
       var gainXp = Math.round(xpOf(def, kg) * (1 + (mm - 1) * 0.5)) + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
@@ -2609,7 +2792,7 @@ function createSceneClass() {
 
       var r = RARITY[def.rarity];
       UI.toast(
-        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : '')) + mutTag(mut) + def.name +
+        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : (isJumbo ? 'JUMBO! ' : ''))) + mutTag(mut) + def.name +
         '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - ' + fmtKg(kg) + '</small>' +
         '<small>Jual ' + fmt(price) + ' Coins - +' + gainXp + ' XP</small></div>',
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
@@ -2822,6 +3005,7 @@ function start() {
 }
 
 window.__TF = {
+  rarityChances: rarityChances, mutChance: mutChance, jumboChance: jumboChance, luckG: luckG, BAITS: BAITS, buyBait: buyBait, cycleBait: cycleBait, setBait: setBait, activeBait: activeBait, maxRarity: maxRarity, SKILL_COST: SKILL_COST, MUTS: MUTS, renderSkills: renderSkills,
   Save: Save, levelInfo: levelInfo, skillPoints: skillPoints, buySkill: buySkill, buyRod: buyRod, equipRod: equipRod, rollMut: rollMut, totalLuck: totalLuck, slotPrice: slotPrice, renderShop: renderShop, setShopTab: function (t) { shopTab = t; }, RODS: RODS, SKILLS: SKILLS,
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
