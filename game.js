@@ -85,8 +85,10 @@ function rankTitle(l) {
 function roundKg(kg) { return Math.max(0.01, kg < 10 ? Math.round(kg * 100) / 100 : Math.round(kg * 10) / 10); }
 function fmtNum(kg) { var d = kg < 10 ? 2 : 1; return kg.toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function fmtKg(kg) { return fmtNum(kg) + ' kg'; }
-function fishScale(kg) {                            // ukuran tampilan ikan menurut berat mutlak (semua jenis): 1 kg = 1x, 160 kg = sekitar 3,5x
-  return Math.max(0.45, Math.min(4.2, Math.pow(Math.max(kg, 0.01), 0.25)));
+function fishScale(kg) {                            // ukuran tampilan ikan menurut berat mutlak (semua jenis)
+  var k = Math.max(kg, 0.01), base = Math.pow(k, 0.25);                    // kurva dasar: 1 kg = 1x, 160 kg = 3,6x
+  var boost = 1 + 2 * Math.max(0, Math.min(1, Math.log(Math.max(k, 1)) / Math.log(180)));   // ikan <= 1 kg x1, ikan >= 180 kg x3
+  return Math.max(0.45, Math.min(13, base * boost));
 }
 function sizeT(f, kg) { var r = f.kg[1] - f.kg[0]; return r > 0 ? Math.max(0, Math.min(1, (kg - f.kg[0]) / r)) : 0; }   // 0 = terkecil, 1 = terbesar
 function sizeFactor(f, kg) { return 0.5 + 1.5 * sizeT(f, kg); }      // 0,5x (terkecil) sampai 2x (terbesar)
@@ -1129,9 +1131,8 @@ function heroPose(anim, k) {
   }
   if (item === 'r') {                                      // membawa joran: lengan dekat memegang gagang, joran miring ke depan-atas
     P.na = [0.42, 0.95]; P.rod = -1.12 + (anim === 'idle' ? (k > 1 ? 0.03 : 0) : Math.sin(k / 6 * Math.PI * 2) * 0.05);
-  } else if (item === 'f') {                               // memegang ikan di depan dada
-    P.na = [0.4, 1.95]; P.rod = null;
-    if (anim === 'idle') P.fa = [-0.04, 0.16];
+  } else if (item === 'f') {                               // memegang ikan: dua tangan diangkat ke atas kepala (pose sama dengan saat menangkap)
+    P.na = [-2.6, -2.8]; P.fa = [-2.5, -2.7]; P.rod = null;
   }
   return P;
 }
@@ -2241,8 +2242,8 @@ function createSceneClass() {
       if (catching) {                                     // ikan diangkat tinggi dengan dua tangan
         this.hideRod();
         var cs = fishScale(f.caughtKg || 1);
-        if (f.caughtId) this.held.setTexture('fish_' + f.caughtId).setVisible(true).setScale(cs * 1.2).setFlipX(fl < 0)
-          .setPosition(p.x + fl * 2, p.y - 52 - 8 * cs - Math.abs(Math.sin(f.t * 9)) * 3).setAngle(-18 * fl).setDepth(p.y + 3);
+        if (f.caughtId) this.held.setTexture('fish_' + f.caughtId).setVisible(true).setScale(cs).setFlipX(fl < 0)
+          .setPosition(p.x + fl * 2, p.y - 60 - 7 * cs - Math.abs(Math.sin(f.t * 9)) * 3).setAngle(-8 * fl).setDepth(p.y + 3);
         return;
       }
       if (fishing) { this.held.setVisible(false); return; }
@@ -2256,11 +2257,9 @@ function createSceneClass() {
         this.hideRod();
         var id = heldFishId();
         if (!id) { this.held.setVisible(false); return; }
-        var h = HERO_HAND[this.curFrame]; if (!h) return;
-        var hx = p.x + (h[0] * 2 - HC_W) * fl, hy = p.y + (h[1] * 2 - HC_FOOT * 2);
         var hs = fishScale(Save.data.kgs[Equip.sel - 1]);
         this.held.setTexture('fish_' + id).setVisible(true).setScale(hs).setFlipX(fl < 0)
-          .setPosition(hx + fl * (2 + 3 * hs), hy - 2 - 4 * hs).setAngle(-24 * fl).setDepth(back ? p.y + 0.2 : p.y + 3);
+          .setPosition(p.x + fl * 2, p.y - 60 - 7 * hs).setAngle(-8 * fl).setDepth(p.y + 3);
       }
     }
     rodGeometry() {
@@ -2372,7 +2371,7 @@ function createSceneClass() {
       this.splash(bx, by);
 
       // ikan melompat dari air ke pemain
-      var jump = this.add.image(bx, by, 'fish_' + def.id).setScale(fishScale(kg) * 1.2).setDepth(9600);
+      var jump = this.add.image(bx, by, 'fish_' + def.id).setScale(fishScale(kg)).setDepth(9600);
       this.tweens.addCounter({
         from: 0, to: 1, duration: 650,
         onUpdate: function (tw) {
