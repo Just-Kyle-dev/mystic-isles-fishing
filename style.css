@@ -307,3 +307,53 @@ html, body {
 #castBar span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; text-shadow: 0 2px 0 #000; letter-spacing: .8px; }
 #castBar.peak { border-color: #b6ff7a; box-shadow: 0 0 14px rgba(120,255,90,.8); }
 #castBar.peak i { background: linear-gradient(#c8ff8a, #2fd04a); }
+
+/* ---------- Level pemain (HUD kiri atas, ketuk untuk membuka profil) ---------- */
+#btnProfile {
+  left: 18px; top: 78px; height: 52px; width: 206px; padding: 0 14px 0 7px;
+  display: flex; align-items: center; gap: 10px; pointer-events: auto; cursor: pointer; text-align: left;
+  background: rgba(8, 36, 52, .82); border: 3px solid #5fe0e6; border-radius: 14px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.35); color: #fff;
+}
+#btnProfile:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
+#btnProfile.pop { animation: pop .45s ease; }
+#lvBadge {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #b9f0ff, #35b6e0 60%, #1b7ba8); border: 3px solid #0c4a6a;
+  font: 800 18px 'Trebuchet MS', Arial, sans-serif; text-shadow: 0 2px 0 rgba(0,0,0,.5);
+}
+.lvTxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+#lvName { font: 800 16px 'Trebuchet MS', Arial, sans-serif; text-shadow: 0 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#lvBar { display: block; height: 10px; border-radius: 6px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.75); overflow: hidden; }
+#lvBar i { display: block; height: 100%; width: 0; background: linear-gradient(#ffe27a, #ff9a2a); transition: width .35s ease; }
+
+/* ---------- Panel profil ---------- */
+.pfLeft {
+  flex: none; width: 260px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 16px; background: rgba(0,0,0,.26); border-radius: 12px;
+}
+.pfPortrait {
+  padding: 8px; border: 3px solid #5fe0e6; border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 40%, #2a9fc0 0%, #12566d 75%);
+}
+.pfPortrait canvas { display: block; width: 120px; height: 192px; image-rendering: pixelated; }
+#pfName {
+  width: 100%; height: 44px; padding: 0 10px; text-align: center; color: #fff; outline: none; touch-action: manipulation;
+  font: 800 22px 'Trebuchet MS', Arial, sans-serif;
+  background: rgba(0,0,0,.35); border: 3px solid #5fe0e6; border-radius: 10px;
+  -webkit-user-select: text; user-select: text;
+}
+#pfName:focus { border-color: #ffd54a; }
+.pfTitle { font-size: 19px; font-weight: 800; color: #ffd54a; text-align: center; text-shadow: 0 2px 0 #000; }
+.pfHint { font-size: 14px; opacity: .7; text-align: center; }
+.pfRight { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 4px 6px; overflow-y: auto; touch-action: pan-y; }
+.pfLv { display: flex; align-items: baseline; justify-content: space-between; }
+.pfLv b { font-size: 36px; color: #ffd54a; text-shadow: 0 3px 0 #000; }
+.pfLv span { font-size: 19px; font-weight: 700; }
+.pfBar { height: 26px; border-radius: 14px; background: rgba(0,0,0,.55); border: 3px solid #fff; overflow: hidden; }
+.pfBar i { display: block; height: 100%; width: 0; background: linear-gradient(#ffe27a, #ff9a2a); transition: width .3s ease; }
+.pfNext { font-size: 16px; opacity: .85; margin-bottom: 4px; }
+.pfStat { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 19px; padding: 7px 0; border-bottom: 1px dashed rgba(255,255,255,.18); }
+.pfRar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+.pfRar div { padding: 6px 4px 8px; text-align: center; font-size: 14px; font-weight: 700; background: rgba(255,255,255,.07); border-top: 5px solid var(--rc); border-radius: 8px; }
+.pfRar b { display: block; font-size: 24px; }

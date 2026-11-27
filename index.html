@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06222c">
 <title>Tropical Fishing Adventure</title>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -16,6 +16,10 @@
 
   <div id="hud">
     <div id="coinBox"><span class="coinIcon"></span><span id="coinText">0</span></div>
+    <button id="btnProfile" type="button" aria-label="Profil">
+      <span id="lvBadge">1</span>
+      <span class="lvTxt"><span id="lvName">Nelayan</span><span id="lvBar"><i></i></span></span>
+    </button>
 
     <button id="btnBag" class="hudbtn" type="button">INVENTORY <b id="bagCount">0</b></button>
     <button id="btnFull" class="hudbtn sq" type="button" aria-label="Layar penuh">
@@ -77,6 +81,26 @@
         <button id="btnSellAll" class="btn" type="button">Jual Semua Ikan</button>
       </div>
     </div>
+
+    <!-- PROFIL -->
+    <div class="panel" id="panelProfile" hidden>
+      <div class="ph"><h2>Profil Nelayan</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="pb">
+        <div class="pfLeft">
+          <div class="pfPortrait"><canvas id="pfPortrait" width="120" height="192"></canvas></div>
+          <input id="pfName" type="text" maxlength="14" autocomplete="off" spellcheck="false" aria-label="Nama karakter">
+          <div id="pfTitle" class="pfTitle"></div>
+          <div class="pfHint">Ketuk nama untuk mengubahnya</div>
+        </div>
+        <div class="pfRight">
+          <div class="pfLv"><b id="pfLevel"></b><span id="pfXpText"></span></div>
+          <div id="pfBar" class="pfBar"><i></i></div>
+          <div id="pfNext" class="pfNext"></div>
+          <div id="pfStats"></div>
+        </div>
+      </div>
+      <div class="pf"><span>Tangkap ikan untuk mendapat XP. Makin langka, makin besar XP-nya!</span></div>
+    </div>
   </div>
 
   <div id="loading">Memuat pulau...</div>
@@ -89,6 +113,6 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
 <script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
-<script src="game.js?v=10"></script>
+<script src="game.js?v=11"></script>
 </body>
 </html>

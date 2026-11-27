@@ -67,6 +67,26 @@ var FISH = [
 var FISH_BY_ID = {};
 FISH.forEach(function (f) { FISH_BY_ID[f.id] = f; });
 
+/* ---------- Level & XP pemain ---------- */
+var LEVEL_MAX = 50;
+var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500 };   // XP per ikan tertangkap
+var XP_FIRST = 20;                                  // bonus XP untuk jenis ikan yang baru pertama kali ditangkap
+function xpToNext(l) { return 40 + l * 20; }        // XP dari level l ke l+1 (Lv1 -> Lv2 = 60 XP)
+function levelInfo(xp) {
+  var l = 1, rest = Math.max(0, Math.floor(xp || 0));
+  while (l < LEVEL_MAX && rest >= xpToNext(l)) { rest -= xpToNext(l); l++; }
+  var need = l >= LEVEL_MAX ? 0 : xpToNext(l);
+  return { level: l, cur: rest, need: need, frac: need ? rest / need : 1 };
+}
+function levelReward(l) { return l * 25; }          // hadiah Coins saat mencapai level l
+function rankTitle(l) {
+  return l >= 50 ? 'Legenda Laut' : l >= 35 ? 'Master Pancing' : l >= 20 ? 'Pemburu Ikan' : l >= 10 ? 'Nelayan Handal' : l >= 5 ? 'Pemancing Lokal' : 'Nelayan Pemula';
+}
+function cleanName(s) {
+  s = String(s == null ? '' : s).replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14).trim();
+  return s || 'Nelayan';
+}
+
 /* ---------- Save (LocalStorage) ---------- */
 function cleanCounts(o) {
   var r = {};
@@ -91,7 +111,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
   return { slots: r, over: over, earn: earn };
 }
 var Save = {
-  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null },
+  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0 },
   migrated: 0,
   load: function () {
     try {
@@ -106,13 +126,19 @@ var Save = {
       this.data.caught = cleanCounts(d.caught);
       this.data.px = typeof d.px === 'number' ? d.px : null;
       this.data.py = typeof d.py === 'number' ? d.py : null;
+      this.data.name = cleanName(d.name);
+      if (d.xp === undefined) {                        // save lama: hitung XP dari ikan yang pernah ditangkap
+        var xp0 = 0, cg = this.data.caught;
+        FISH.forEach(function (f) { if (cg[f.id] > 0) xp0 += cg[f.id] * XP_FISH[f.rarity] + XP_FIRST; });
+        this.data.xp = xp0;
+      } else this.data.xp = Math.max(0, Math.floor(+d.xp || 0));
     } catch (e) { /* abaikan */ }
   },
   write: function () {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* abaikan */ }
   },
   reset: function () {
-    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null };
+    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0 };
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* abaikan */ }
   }
 };
@@ -1405,6 +1431,13 @@ var UI = {
     if (pop) { var b = $('coinBox'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
   },
   setBag: function () { $('bagCount').textContent = totalFish(); },
+  setLevel: function (pop) {
+    var li = levelInfo(Save.data.xp);
+    $('lvBadge').textContent = li.level;
+    $('lvName').textContent = Save.data.name;
+    $('lvBar').firstElementChild.style.width = Math.round(li.frac * 100) + '%';
+    if (pop) { var b = $('btnProfile'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+  },
   setFishButton: function (label, mode, enabled) {   // mode: '', 'cancel', 'bite'
     var key = label + '|' + mode + '|' + enabled;
     if (this.cache.fish === key) return;
@@ -1513,16 +1546,18 @@ function initJoystick() {
 var KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down' };
 function initKeyboard() {
   window.addEventListener('keydown', function (e) {
+    if (e.target && e.target.tagName === 'INPUT') return;          // sedang mengetik nama
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { Ctl.keys.sprint = true; return; }
     if (KEYMAP[e.code]) { Ctl.keys[KEYMAP[e.code]] = true; e.preventDefault(); return; }
     if (e.repeat) return;
     if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishDown(); e.preventDefault(); }
     else if (e.code === 'KeyE') { if (scene) scene.pressTalk(); }
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
+    else if (e.code === 'KeyP') Modal.toggle('profile');
     else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
     else if (e.code === 'Escape') Modal.close();
   });
-  window.addEventListener('keyup', function (e) { if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishUp(); } if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
+  window.addEventListener('keyup', function (e) { if (e.target && e.target.tagName === 'INPUT') return; if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishUp(); } if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
   window.addEventListener('blur', function () { Ctl.keys = {}; resetJoy(); });
 }
 
@@ -1590,13 +1625,17 @@ var Modal = {
     $('modal').classList.remove('hidden');
     $('panelInv').hidden = name !== 'inv';
     $('panelShop').hidden = name !== 'shop';
+    $('panelProfile').hidden = name !== 'profile';
     Ctl.modal = true; Ctl.sprint = false; resetJoy();
     if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Reset Data'; renderInventory(); }
     if (name === 'shop') { npcLine = NPC_SAY.hi; renderShop(); }
+    if (name === 'profile') renderProfile();
   },
   close: function () {
     if (!this.cur) return;
     this.cur = null;
+    stopPortrait();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // simpan nama bila sedang diketik
     $('modal').classList.add('hidden');
     Ctl.modal = false;
     Save.write();
@@ -1686,6 +1725,65 @@ function renderInventory() {
   if (invTab === 'bag') renderBag(); else { renderCollection(); updateInvSummary(); }
 }
 
+function addXp(amount) {
+  var before = levelInfo(Save.data.xp).level;
+  Save.data.xp += amount;
+  var after = levelInfo(Save.data.xp).level, coins = 0, l;
+  for (l = before + 1; l <= after; l++) coins += levelReward(l);
+  if (coins) { Save.data.coins += coins; UI.setCoins(true); }
+  UI.setLevel(true);
+  return { up: after > before, level: after, coins: coins };
+}
+
+/* ---------- Profil karakter ---------- */
+var PLAYER_SHEET = null, pfTimer = 0, pfFrame = 0, HERO_FRAME_BY_KEY = null;
+function drawPortrait() {
+  var cv = $('pfPortrait');
+  if (!cv || !PLAYER_SHEET) return;
+  if (!HERO_FRAME_BY_KEY) { HERO_FRAME_BY_KEY = {}; HERO_FRAMES.forEach(function (fr) { HERO_FRAME_BY_KEY[fr.key] = fr; }); }
+  var fr = HERO_FRAME_BY_KEY['F0:idle:' + (pfFrame % 4)];
+  if (!fr) return;
+  var g = cv.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, cv.width, cv.height);
+  g.drawImage(PLAYER_SHEET, fr.x, fr.y, HC_W * 2, HC_H * 2, 0, 0, cv.width, cv.height);
+}
+function startPortrait() {
+  stopPortrait(); pfFrame = 0; drawPortrait();
+  pfTimer = setInterval(function () { pfFrame++; drawPortrait(); }, 280);
+}
+function stopPortrait() { if (pfTimer) { clearInterval(pfTimer); pfTimer = 0; } }
+function renderProfile() {
+  var d = Save.data, li = levelInfo(d.xp), i;
+  $('pfName').value = d.name;
+  $('pfTitle').textContent = rankTitle(li.level);
+  $('pfLevel').textContent = 'Level ' + li.level;
+  $('pfXpText').textContent = li.need ? fmt(li.cur) + ' / ' + fmt(li.need) + ' XP' : 'Level maksimum';
+  $('pfBar').firstElementChild.style.width = Math.round(li.frac * 100) + '%';
+  $('pfNext').textContent = li.need ? 'Naik ke Level ' + (li.level + 1) + ' = hadiah ' + fmt(levelReward(li.level + 1)) + ' Coins' : 'Kamu sudah mencapai level tertinggi!';
+  var total = 0, found = 0, best = null, perRar = {};
+  RARITY_ORDER.forEach(function (r) { perRar[r] = 0; });
+  FISH.forEach(function (f) {
+    var n = d.caught[f.id] || 0;
+    if (n > 0) {
+      total += n; found++; perRar[f.rarity] += n;
+      if (!best || RARITY_ORDER.indexOf(f.rarity) > RARITY_ORDER.indexOf(best.rarity) || (f.rarity === best.rarity && f.price > best.price)) best = f;
+    }
+  });
+  var h = '<div class="pfStat"><span>Total ikan tertangkap</span><b>' + fmt(total) + '</b></div>' +
+    '<div class="pfStat"><span>Koleksi ikan</span><b>' + found + ' / ' + FISH.length + '</b></div>' +
+    '<div class="pfStat"><span>Tangkapan terlangka</span><b>' + (best ? '<span class="r-' + best.rarity + '">' + best.name + '</span>' : '-') + '</b></div>' +
+    '<div class="pfStat"><span>Coins</span><b>' + fmt(d.coins) + '</b></div>' +
+    '<div class="pfStat"><span>Total XP</span><b>' + fmt(d.xp) + '</b></div>' +
+    '<div class="pfRar">';
+  for (i = 0; i < RARITY_ORDER.length; i++) {
+    var rk = RARITY_ORDER[i];
+    h += '<div style="--rc:' + RARITY[rk].color + '"><b>' + perRar[rk] + '</b><span class="r-' + rk + '">' + RARITY[rk].label + '</span></div>';
+  }
+  $('pfStats').innerHTML = h + '</div>';
+  startPortrait();
+}
+
 function sellFish(id, all) {
   var sl = Save.data.slots, cnt = 0, i;
   if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { sl[i] = null; cnt++; } }
@@ -1749,6 +1847,14 @@ function initButtons() {
   fb.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   press('btnTalk', function () { if (scene) scene.pressTalk(); });
   press('btnBag', function () { Modal.toggle('inv'); });
+  press('btnProfile', function () { Modal.toggle('profile'); });
+  var pn = $('pfName');
+  pn.addEventListener('change', function () {
+    Save.data.name = cleanName(pn.value); pn.value = Save.data.name;
+    Save.write(); UI.setLevel(false);
+  });
+  pn.addEventListener('keydown', function (e) { if (e.key === 'Enter') pn.blur(); });
+  pn.addEventListener('focus', function () { try { pn.select(); } catch (err) { /* abaikan */ } });
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
   $('tabCol').addEventListener('click', function () { invTab = 'col'; renderInventory(); });
   $('btnFull').addEventListener('pointerdown', function (e) {
@@ -1775,7 +1881,7 @@ function initButtons() {
     }
     Save.reset(); resetArm = 0; b.textContent = 'Reset Data';
     invSel = null; shopSel = null; slotSel = null; moveFrom = null; Equip.sel = 0;
-    UI.setCoins(false); UI.setBag(); Hotbar.render();
+    UI.setCoins(false); UI.setBag(); UI.setLevel(false); Hotbar.render();
     if (scene) scene.resetPlayer();
     renderInventory();
     UI.toast('Data game direset', '#ff7b7b', false, 1800);
@@ -1849,7 +1955,8 @@ function createSceneClass() {
       this.textures.addCanvas('ground', isl.ground);
       isl.foam.forEach(function (c, k) { self.textures.addCanvas('foam' + k, c); });
       this.origins = {};
-      var ps = this.textures.addCanvas('player', makePlayerSheet());
+      PLAYER_SHEET = makePlayerSheet();
+      var ps = this.textures.addCanvas('player', PLAYER_SHEET);
       HERO_FRAMES.forEach(function (fr) { ps.add(fr.key, 0, fr.x, fr.y, HC_W * 2, HC_H * 2); });
       var ns = this.textures.addCanvas('npc', makeNpcSheet());
       for (var nq = 0; nq < 4; nq++) ns.add('i' + nq, 0, nq * HC_W * 2, 0, HC_W * 2, HC_H * 2);
@@ -2208,6 +2315,7 @@ function createSceneClass() {
       if (addFishSlot(def.id) < 0) { Save.data.coins += def.price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
       f.caughtId = def.id;
       Save.data.caught[def.id] = (Save.data.caught[def.id] || 0) + 1;
+      var gainXp = XP_FISH[def.rarity] + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
       this.savePos();
       UI.setBag(); Hotbar.render();
       var rc = RARITY[def.rarity].color, bx = f.bx, by = f.by, foot = this.foot;
@@ -2230,8 +2338,13 @@ function createSceneClass() {
       var r = RARITY[def.rarity];
       UI.toast(
         '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : '') + def.name +
-        '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - Jual ' + fmt(def.price) + ' Coins</small></div>',
+        '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - Jual ' + fmt(def.price) + ' Coins - +' + gainXp + ' XP</small></div>',
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
+      if (lvUp.up) {                                   // pesan naik level muncul setelah pesan ikan selesai
+        setTimeout(function () {
+          UI.toast('<div>NAIK LEVEL! Level ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Coins</small></div>', '#ffd54a', true, 3400);
+        }, def.rarity === 'legendary' ? 4100 : 2900);
+      }
     }
 
     /* ---------- loop utama ---------- */
@@ -2414,7 +2527,7 @@ function start() {
   initKeyboard();
   initButtons();
   resetJoy();
-  UI.setCoins(false); UI.setBag();
+  UI.setCoins(false); UI.setBag(); UI.setLevel(false);
   Hotbar.build(); Hotbar.render();
   if (Save.migrated > 0) UI.toast('<div>Tas ikan kini punya 50 kotak. ' + Save.migrated + ' ikan berlebih otomatis dijual.</div>', '#ffd54a', false, 3200);
 
@@ -2438,7 +2551,7 @@ function start() {
 window.__TF = {
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
-  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID
+  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp
 };
 
 start();
