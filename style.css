@@ -365,3 +365,38 @@ html, body {
 #btnZin { top: 82px; }
 #btnZout { top: 148px; }
 #btnZin.off, #btnZout.off { opacity: .4; filter: grayscale(.6); }
+
+/* ---------- Skill, joran, mutasi, kontrol PC ---------- */
+#btnSkill { right: 92px; top: 82px; height: 54px; padding: 0 18px; }
+#btnSkill b { display: inline-block; min-width: 26px; margin-left: 8px; padding: 2px 8px; background: #ffd54a; color: #4a3300; border-radius: 999px; text-shadow: none; font-size: 17px; }
+#btnHelp { right: 92px; top: 150px; height: 46px; padding: 0 16px; font-size: 16px; }
+.kb { display: none; }
+html.pc .kb { display: inline-block; margin-left: 8px; padding: 1px 7px; font: 800 13px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.35); border-radius: 6px; text-shadow: none; vertical-align: middle; }
+html.pc #btnRun .kb, html.pc #btnTalk .kb { display: block; margin: 2px auto 0; width: max-content; }
+html.pc #btnFish::after { content: 'SPASI'; display: block; margin: 2px auto 0; width: max-content; padding: 1px 7px; font: 800 13px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; background: rgba(0,0,0,.45); border-radius: 6px; }
+.row.locked { opacity: .55; }
+.ficon.rodi { width: 64px; height: 24px; flex: none; transform: rotate(-12deg); }
+.detail .big.rodbig { width: 170px; height: 62px; transform: rotate(-12deg); margin: 4px auto 8px; }
+.skPts { margin-left: auto; margin-right: 18px; padding: 6px 16px; background: #ffd54a; color: #4a3300; border-radius: 999px; font: 800 20px 'Trebuchet MS', Arial, sans-serif; }
+.skTip { font-size: 16px; opacity: .8; }
+#skillCols { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+.skCol { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(0,0,0,.26); border-radius: 12px; border-top: 5px solid var(--sc); }
+.skHead { display: flex; flex-direction: column; gap: 1px; min-height: 78px; }
+.skHead b { font-size: 24px; color: var(--sc); }
+.skHead span { font-size: 15px; font-weight: 800; color: #fff; }
+.skHead small { font-size: 12px; line-height: 1.25; opacity: .8; }
+.skNodes { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.skNode { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 3px 8px; border-radius: 9px; background: rgba(255,255,255,.07); border: 2px solid transparent; }
+.skNode i { flex: none; width: 26px; height: 26px; line-height: 26px; text-align: center; border-radius: 50%; font: 800 15px 'Trebuchet MS', Arial, sans-serif; font-style: normal; background: #23495a; color: #9bb; }
+.skNode div { flex: 1; display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.skNode b { font-size: 14px; } .skNode span { font-size: 11px; opacity: .85; }
+.skNode em { font-size: 13px; font-style: normal; font-weight: 800; color: #ffd54a; }
+.skNode.done { background: rgba(255,255,255,.14); border-color: var(--sc); } .skNode.done i { background: var(--sc); color: #08202c; }
+.skNode.next { border-color: #ffd54a; } .skNode.next i { background: #ffd54a; color: #4a3300; }
+.skNode.lock { opacity: .5; }
+.skBuy { width: 100%; }
+.slot .mt { position: absolute; right: 4px; bottom: 10px; font-size: 14px; text-shadow: 0 1px 0 #000, 0 0 4px currentColor; pointer-events: none; }
+.keyGrid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; align-content: start; padding: 6px 10px; overflow-y: auto; }
+.keyGrid > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(255,255,255,.07); border-radius: 10px; font-size: 17px; }
+.keyGrid span { flex-basis: 100%; font-size: 15px; opacity: .9; }
+kbd { display: inline-block; min-width: 30px; padding: 3px 9px; text-align: center; font: 800 17px 'Trebuchet MS', Arial, sans-serif; color: #fff; background: linear-gradient(#35687d, #1b4356); border: 2px solid #5fe0e6; border-bottom-width: 4px; border-radius: 7px; }

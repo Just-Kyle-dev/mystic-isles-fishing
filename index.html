@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06222c">
 <title>Tropical Fishing Adventure</title>
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 
@@ -22,6 +22,8 @@
     </button>
 
     <button id="btnBag" class="hudbtn" type="button">INVENTORY <b id="bagCount">0</b></button>
+    <button id="btnSkill" class="hudbtn" type="button">SKILL <b id="skillCount">0</b><small class="kb">K</small></button>
+    <button id="btnHelp" class="hudbtn" type="button">KONTROL <small class="kb">H</small></button>
     <button id="btnFull" class="hudbtn sq" type="button" aria-label="Layar penuh">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
@@ -44,8 +46,8 @@
     <div id="joyZone"></div>
     <div id="joyBase"><div id="joyKnob"></div></div>
 
-    <button id="btnTalk" type="button">TOKO IKAN</button>
-    <button id="btnRun" type="button" aria-label="Lari">LARI</button>
+    <button id="btnTalk" type="button">TOKO IKAN<small class="kb">E</small></button>
+    <button id="btnRun" type="button" aria-label="Lari">LARI<small class="kb">SHIFT</small></button>
     <button id="btnFish" type="button">LEMPAR</button>
   </div>
 
@@ -73,7 +75,7 @@
 
     <!-- TOKO -->
     <div class="panel" id="panelShop" hidden>
-      <div class="ph"><h2>Toko Ikan - Pak Marlin</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="ph"><h2>Toko Pak Marlin</h2><div class="tabs"><button id="tabShopFish" class="tab on" type="button">Jual Ikan</button><button id="tabShopRod" class="tab" type="button">Joran</button></div><button class="x" type="button" data-close>X</button></div>
       <div class="pb">
         <div id="shopList" class="list"></div>
         <div id="shopDetail" class="detail"></div>
@@ -103,6 +105,33 @@
       </div>
       <div class="pf"><span>Tangkap ikan untuk mendapat XP. Makin langka dan makin berat, makin besar XP-nya!</span></div>
     </div>
+
+    <!-- SKILL -->
+    <div class="panel" id="panelSkill" hidden>
+      <div class="ph"><h2>Skill Nelayan</h2><span id="skillPts" class="skPts"></span><button class="x" type="button" data-close>X</button></div>
+      <div class="pb"><div id="skillCols"></div></div>
+      <div class="pf"><span id="skillInfo"></span><span class="skTip">1 poin tiap naik level</span></div>
+    </div>
+
+    <!-- KONTROL PC -->
+    <div class="panel" id="panelHelp" hidden>
+      <div class="ph"><h2>Kontrol Keyboard (PC / Laptop)</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="pb"><div class="keyGrid">
+        <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd><span>Berjalan</span></div>
+        <div><kbd>Shift</kbd><span>Tahan untuk berlari</span></div>
+        <div><kbd>Spasi</kbd> / <kbd>F</kbd><span>Tahan lalu lepas = lempar; tekan = tarik / angkat kail</span></div>
+        <div><kbd>E</kbd><span>Bicara / buka toko (dekat Pak Marlin)</span></div>
+        <div><kbd>1</kbd><span>Joran (tekan lagi = ganti joran) &nbsp;<kbd>Q</kbd> ganti joran</span></div>
+        <div><kbd>2</kbd>&ndash;<kbd>7</kbd><span>Pegang ikan di hotbar</span></div>
+        <div><kbd>I</kbd> / <kbd>B</kbd><span>Tas ikan</span></div>
+        <div><kbd>K</kbd><span>Skill (poin dari naik level)</span></div>
+        <div><kbd>P</kbd><span>Profil &amp; level</span></div>
+        <div><kbd>+</kbd> <kbd>&minus;</kbd> / roda mouse<span>Zoom</span></div>
+        <div><kbd>H</kbd> / <kbd>F1</kbd><span>Buka / tutup bantuan ini</span></div>
+        <div><kbd>Esc</kbd><span>Tutup jendela</span></div>
+      </div></div>
+      <div class="pf"><span>Di HP, pakai joystick dan tombol di layar seperti biasa.</span></div>
+    </div>
   </div>
 
   <div id="loading">Memuat pulau...</div>
@@ -115,6 +144,6 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
 <script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
-<script src="game.js?v=16"></script>
+<script src="game.js?v=18"></script>
 </body>
 </html>

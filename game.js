@@ -67,6 +67,78 @@ var FISH = [
 var FISH_BY_ID = {};
 FISH.forEach(function (f) { FISH_BY_ID[f.id] = f; });
 
+/* ---------- Joran (level + Coins), Skill (poin dari level), Mutasi ikan ---------- */
+/* power = tenaga tarik (bar tarik lebih mudah penuh, ikan lebih lambat melawan); luck = bonus peluang ikan langka. Dua joran boleh punya power sama tapi luck berbeda. */
+var RODS = [
+  { id: 'kayu', name: 'Joran Kayu Pemula', lv: 1, price: 0, power: 1, luck: 0, accent: '#e0b06a', style: {},
+    desc: 'Joran kayu sederhana. Cukup untuk belajar memancing di dermaga.' },
+  { id: 'bambu', name: 'Joran Bambu Tua', lv: 5, price: 600, power: 1, luck: 2, accent: '#d6cf6a',
+    style: { b0: '#b8b04a', b1: '#efe58a', b2: '#6f6a24', b3: '#9a933a', b4: '#857f2c', w0: '#3f5a2a', w1: '#567a38', w2: '#6e9648', wh0: '#7fae58', wh1: '#a5d070', wd: '#22361a', wm: '#2f4a20' },
+    desc: 'Bambu pilihan yang diyakini membawa hoki. Tenaganya sama dengan joran kayu, tapi lebih beruntung.' },
+  { id: 'fiber', name: 'Joran Fiber Biru', lv: 10, price: 2200, power: 2, luck: 3, accent: '#59b6ff',
+    style: { b0: '#2f7bd0', b1: '#7fc0ff', b2: '#173f78', b3: '#2468b8', b4: '#1d559a', w0: '#3a3f4a', w1: '#505766', w2: '#686f80', wh0: '#7b8396', wh1: '#a0a8ba', wd: '#1b1e25', wm: '#2a2e38',
+      m0: '#cfd6e2', m1: '#ffffff', m2: '#7f8798', m3: '#aab2c2', r0: '#c4cbd8', r1: '#8f98ab', r2: '#7a8396', r3: '#eef2fa', r4: '#5b6479', r5: '#9aa3b6', r6: '#dfe5f0', r7: '#6a7388' },
+    desc: 'Serat fiber ringan dan lentur. Tarikannya lebih kuat dari joran kayu.' },
+  { id: 'karbon', name: 'Joran Karbon Hitam', lv: 18, price: 7500, power: 3, luck: 5, accent: '#ff6b6b',
+    style: { b0: '#2d3037', b1: '#6c7280', b2: '#121318', b3: '#23262c', b4: '#1b1d22', w0: '#7a1f1f', w1: '#a02828', w2: '#c23a3a', wh0: '#d85a5a', wh1: '#f08a8a', wd: '#4a1010', wm: '#5e1818',
+      m0: '#c9ccd6', m1: '#ffffff', m2: '#6f7384', m3: '#a3a7b6', r0: '#4a4f5c', r1: '#2b2e38', r2: '#383c48', r3: '#9aa0b0', r4: '#1c1e26', r5: '#6a6f7e', r6: '#b0b5c4', r7: '#3c404c' },
+    desc: 'Kuat, kaku, dan peka terhadap gigitan. Pilihan nelayan berpengalaman.' },
+  { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 8, accent: '#6fe3d2',
+    style: { b0: '#5fa8b8', b1: '#bff0f8', b2: '#2a5f70', b3: '#4a8fa0', b4: '#3a7788', w0: '#2a3a48', w1: '#3c5266', w2: '#506a82', wh0: '#6a88a4', wh1: '#8fb0cc', wd: '#141e28', wm: '#1e2c3a',
+      m0: '#e6e8f0', m1: '#ffffff', m2: '#8a90a2', m3: '#c0c5d4', r0: '#9fe6f0', r1: '#4aa0b4', r2: '#62bcd0', r3: '#e6fcff', r4: '#2f7488', r5: '#bfeaf2', r6: '#f2feff', r7: '#4a8fa0' },
+    desc: 'Power sama seperti joran karbon, tetapi diberkahi luck jauh lebih besar.' },
+  { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 12, accent: '#d28cff',
+    style: { b0: '#b03ad0', b1: '#f08aff', b2: '#5a1a78', b3: '#9a2cba', b4: '#7e2298', w0: '#3a1a5a', w1: '#552a80', w2: '#6e3ca0', wh0: '#8a58c0', wh1: '#b088e0', wd: '#20103a', wm: '#2c164a',
+      m0: '#ffd34a', m1: '#fff7b0', m2: '#b8860b', m3: '#e6b422', r0: '#ffd34a', r1: '#b8860b', r2: '#e6b422', r3: '#fff7b0', r4: '#7a5a08', r5: '#ffe27a', r6: '#fff2b0', r7: '#9a7410' },
+    desc: 'Joran legendaris bersisik pelangi. Tenaga tertinggi dan keberuntungan terbaik.' }
+];
+var RODS_BY_ID = {};
+RODS.forEach(function (r) { RODS_BY_ID[r.id] = r; });
+
+var MUTS = [
+  { id: 'albino', name: 'Albino', mult: 1.5, w: 40, color: '#eef0ff' },
+  { id: 'emas', name: 'Emas', mult: 2.5, w: 28, color: '#ffd54a' },
+  { id: 'kristal', name: 'Kristal', mult: 4, w: 16, color: '#7ae8ff' },
+  { id: 'neon', name: 'Neon', mult: 6, w: 9, color: '#ff5ee8' },
+  { id: 'kosmik', name: 'Kosmik', mult: 12, w: 3, color: '#b48cff' }
+];
+var MUT_BY_ID = {};
+MUTS.forEach(function (m) { MUT_BY_ID[m.id] = m; });
+function mutMult(id) { return id && MUT_BY_ID[id] ? MUT_BY_ID[id].mult : 1; }
+function mutTag(id) { return id && MUT_BY_ID[id] ? '<span style="color:' + MUT_BY_ID[id].color + ';text-shadow:0 0 6px ' + MUT_BY_ID[id].color + '">[' + MUT_BY_ID[id].name + ']</span> ' : ''; }
+
+var SKILL_COST = [1, 1, 2, 2, 3, 3];                 // poin untuk tingkat 1..6 (1 poin didapat tiap naik level)
+var SKILL_ORDER = ['luck', 'mut', 'big', 'swift'];
+var SKILLS = {
+  luck:  { name: 'Hoki', color: '#6fe36f', val: [0, 2, 4, 6, 8, 11, 14],
+    perks: ['Jimat Kecil', 'Hari Cerah', 'Angin Baik', 'Berkah Laut', 'Bintang Nelayan', 'Dewi Fortuna'],
+    eff: function (v) { return 'Luck +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan luck joran).' },
+  mut:   { name: 'Mutasi', color: '#d28cff', val: [3, 5, 7, 9, 11, 14, 18],
+    perks: ['Air Aneh', 'Arus Misterius', 'Cahaya Ganjil', 'Pasang Kosmik', 'Gelombang Gen', 'Evolusi'],
+    eff: function (v) { return 'Peluang mutasi ' + v + '%'; }, desc: 'Ikan bermutasi (Albino, Emas, Kristal, Neon, Kosmik) dan harganya berlipat.' },
+  big:   { name: 'Ikan Besar', color: '#ff9a4a', val: [0, 10, 20, 30, 40, 50, 60],
+    perks: ['Umpan Gemuk', 'Lengan Kuat', 'Mata Elang', 'Kail Raksasa', 'Pemburu Raksasa', 'Raja Samudra'],
+    eff: function (v) { return 'Peluang ikan jumbo ' + v + '%'; }, desc: 'Ikan yang tertangkap cenderung lebih berat, jadi lebih mahal dan XP lebih besar.' },
+  swift: { name: 'Tangkas', color: '#59b6ff', val: [1, 1.08, 1.16, 1.24, 1.32, 1.4, 1.5], wait: [1, 0.93, 0.86, 0.8, 0.74, 0.68, 0.6],
+    perks: ['Tangan Cekatan', 'Refleks', 'Sabar', 'Fokus', 'Insting', 'Kilat'],
+    eff: function (v, i) { return 'Tarik +' + Math.round((v - 1) * 100) + '% | Tunggu -' + Math.round((1 - SKILLS.swift.wait[i]) * 100) + '%'; },
+    desc: 'Ikan menggigit lebih cepat dan kamu punya waktu lebih longgar untuk menarik.' }
+};
+function skillTier(k) { return Math.max(0, Math.min(6, (Save.data.skills && Save.data.skills[k]) | 0)); }
+function skillVal(k) { return SKILLS[k].val[skillTier(k)]; }
+function skillSpent() { var s = 0; SKILL_ORDER.forEach(function (k) { for (var t = 0; t < skillTier(k); t++) s += SKILL_COST[t]; }); return s; }
+function skillPoints() { return Math.max(0, levelInfo(Save.data.xp).level - 1 - skillSpent()); }
+function curRod() { return RODS_BY_ID[Save.data.rod] || RODS[0]; }
+function totalLuck() { return curRod().luck + skillVal('luck'); }
+function rollMut() {                                 // null = ikan normal
+  if (Math.random() * 100 >= skillVal('mut')) return null;
+  var t = skillTier('mut'), ws = MUTS.map(function (m, i) { return m.w * (1 + t * 0.12 * i); }), tot = 0, i;
+  ws.forEach(function (v) { tot += v; });
+  var r = Math.random() * tot;
+  for (i = 0; i < MUTS.length; i++) { r -= ws[i]; if (r <= 0) return MUTS[i].id; }
+  return MUTS[0].id;
+}
+
 /* ---------- Level & XP pemain ---------- */
 var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500 };   // XP dasar per ikan (dikali faktor berat)
 var XP_FIRST = 20;                                  // bonus XP untuk jenis ikan yang baru pertama kali ditangkap
@@ -95,8 +167,11 @@ function sizeFactor(f, kg) { return 0.5 + 1.5 * sizeT(f, kg); }      // 0,5x (te
 function priceOf(id, kg) { var f = FISH_BY_ID[id]; return Math.max(1, Math.round(f.price * sizeFactor(f, kg))); }
 function xpOf(f, kg) { return Math.max(1, Math.round(XP_FISH[f.rarity] * sizeFactor(f, kg))); }
 function defaultKg(f) { return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) / 3); }   // berat yang harganya = harga dasar (dipakai untuk save lama)
-function rollKg(f, luck) {                          // ikan besar jarang; lemparan lebih jauh sedikit menambah peluang ikan besar
-  var t = Math.pow(Math.random(), 1.7 - 0.5 * (luck || 0));
+function rollKg(f, luck, bigTier) {                 // ikan besar jarang; lemparan jauh & skill Ikan Besar menambah peluang ikan jumbo
+  bigTier = bigTier | 0;
+  var ex = Math.max(0.5, 1.7 - 0.5 * Math.min(1, luck || 0) - 0.08 * bigTier);
+  var t = Math.pow(Math.random(), ex);
+  if (bigTier && Math.random() * 100 < SKILLS.big.val[bigTier]) t = Math.max(t, Math.pow(Math.random(), ex));
   return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) * t);
 }
 function blankKgs() { var r = [], i; for (i = 0; i < 50; i++) r.push(null); return r; }
@@ -141,8 +216,13 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
   while (r.length < NSLOT) r.push(null);
   return { slots: r, over: over, earn: earn };
 }
+function cleanMuts(arr, slots) { var r = [], i; for (i = 0; i < NSLOT; i++) { var v = Array.isArray(arr) ? arr[i] : null; r.push(slots[i] && v && MUT_BY_ID[v] ? v : null); } return r; }
+function blankData() {
+  return { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), muts: blankKgs(), record: {}, zoom: ZOOM_MAX,
+    rod: 'kayu', rods: ['kayu'], skills: { luck: 0, mut: 0, big: 0, swift: 0 } };
+}
 var Save = {
-  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {}, zoom: ZOOM_MAX },
+  data: blankData(),
   migrated: 0,
   load: function () {
     try {
@@ -154,6 +234,13 @@ var Save = {
       if (Array.isArray(d.slots)) this.data.slots = cleanSlots(d.slots);
       else { var m = slotsFromCounts(cleanCounts(d.inv)); this.data.slots = m.slots; this.data.coins += m.earn; this.migrated = m.over; }
       this.data.kgs = cleanKgs(d.kgs, this.data.slots);
+      this.data.muts = cleanMuts(d.muts, this.data.slots);
+      var ro = Array.isArray(d.rods) ? d.rods.filter(function (id) { return RODS_BY_ID[id]; }) : [];
+      if (ro.indexOf('kayu') < 0) ro.unshift('kayu');
+      this.data.rods = ro;
+      this.data.rod = (RODS_BY_ID[d.rod] && ro.indexOf(d.rod) >= 0) ? d.rod : 'kayu';
+      var sk = d.skills && typeof d.skills === 'object' ? d.skills : {};
+      this.data.skills = { luck: Math.max(0, Math.min(6, sk.luck | 0)), mut: Math.max(0, Math.min(6, sk.mut | 0)), big: Math.max(0, Math.min(6, sk.big | 0)), swift: Math.max(0, Math.min(6, sk.swift | 0)) };
       this.data.record = cleanRecord(d.record);
       this.data.zoom = (+d.zoom >= ZOOM_MIN && +d.zoom <= ZOOM_MAX) ? Math.round(+d.zoom * 100) / 100 : ZOOM_MAX;
       syncInv();
@@ -172,7 +259,7 @@ var Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* abaikan */ }
   },
   reset: function () {
-    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {}, zoom: ZOOM_MAX };
+    this.data = blankData();
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* abaikan */ }
   }
 };
@@ -183,9 +270,10 @@ function syncInv() {                      // hitungan per jenis (dipakai toko) d
   Save.data.inv = inv;
 }
 function freeSlots() { var n = 0; Save.data.slots.forEach(function (x) { if (!x) n++; }); return n; }
-function addFishSlot(id, kg) {
+function slotPrice(i) { var id = Save.data.slots[i]; return id ? Math.max(1, Math.round(priceOf(id, Save.data.kgs[i]) * mutMult(Save.data.muts[i]))) : 0; }
+function addFishSlot(id, kg, mut) {
   var s = Save.data.slots;
-  for (var i = 0; i < s.length; i++) if (!s[i]) { s[i] = id; Save.data.kgs[i] = kg || defaultKg(FISH_BY_ID[id]); syncInv(); return i; }
+  for (var i = 0; i < s.length; i++) if (!s[i]) { s[i] = id; Save.data.kgs[i] = kg || defaultKg(FISH_BY_ID[id]); Save.data.muts[i] = mut || null; syncInv(); return i; }
   return -1;
 }
 
@@ -1339,7 +1427,11 @@ var DIRVIEW = [
 ];
 
 /* ---------- joran kayu pemula (sprite horizontal; titik pegang = tengah gagang) ---------- */
-function makeRod() {                                   // resolusi 1 px (lebih halus) agar batang terlihat ramping
+function makeRod(st) {
+  var Q = { w0: '#6e4020', w1: '#8c5a2c', w2: '#a06a35', wh0: '#9a6b3a', wh1: '#bf8d57', wd: '#47280f', wm: '#5a3418',
+    m0: '#d9b45a', m1: '#fff0b0', m2: '#98721f', m3: '#c39a3e', b0: '#92462d', b1: '#d77a5c', b2: '#561f13', b3: '#7a3624', b4: '#6c2b1b',
+    r0: '#e8c47a', r1: '#b9833a', r2: '#a7742f', r3: '#f6dc9c', r4: '#7d4f1d', r5: '#c9a35a', r6: '#f0d890', r7: '#8a6420' }, kq;
+  st = st || {}; for (kq in st) Q[kq] = st[kq];                                   // resolusi 1 px (lebih halus) agar batang terlihat ramping
   var LW = 74, LH = 27, cv = mkCanvas(LW, LH), c = cv[0], g = cv[1], x, y, dx, dy, k;
   function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a, b, w, h); }
   // senar tipis menyusuri ring pemandu (di belakang batang)
@@ -1349,41 +1441,41 @@ function makeRod() {                                   // resolusi 1 px (lebih h
   R(0, 7, 4, 3, '#3a3026'); R(0, 6, 4, 1, '#5e5142'); R(1, 10, 3, 1, '#1f1812'); R(0, 7, 1, 3, '#2a2119');
   for (x = 4; x <= 25; x++) {
     var wrp = ((x + (x >> 3)) % 3);
-    R(x, 6, 1, 5, wrp === 0 ? '#6e4020' : (wrp === 1 ? '#8c5a2c' : '#a06a35'));
-    R(x, 6, 1, 1, wrp === 0 ? '#9a6b3a' : '#bf8d57'); R(x, 10, 1, 1, '#47280f');
-    if (wrp === 0) { R(x, 8, 1, 1, '#5a3418'); }
+    R(x, 6, 1, 5, wrp === 0 ? Q.w0 : (wrp === 1 ? Q.w1 : Q.w2));
+    R(x, 6, 1, 1, wrp === 0 ? Q.wh0 : Q.wh1); R(x, 10, 1, 1, Q.wd);
+    if (wrp === 0) { R(x, 8, 1, 1, Q.wm); }
   }
-  R(26, 6, 3, 5, '#d9b45a'); R(26, 6, 3, 1, '#fff0b0'); R(26, 10, 3, 1, '#98721f'); R(27, 7, 1, 3, '#c39a3e');       // cincin kuningan
+  R(26, 6, 3, 5, Q.m0); R(26, 6, 3, 1, Q.m1); R(26, 10, 3, 1, Q.m2); R(27, 7, 1, 3, Q.m3);       // cincin kuningan
   // batang bawah kayu merah-cokelat
   for (x = 29; x <= 52; x++) {
     var th = x < 42 ? 4 : 3;
-    R(x, 7, 1, th, '#92462d'); R(x, 7, 1, 1, '#d77a5c'); R(x, 6 + th, 1, 1, '#561f13');
-    if ((x * 5) % 11 === 2) R(x, 8, 1, 1, '#7a3624'); if ((x * 3) % 13 === 5) R(x, 9, 1, 1, '#6c2b1b');
+    R(x, 7, 1, th, Q.b0); R(x, 7, 1, 1, Q.b1); R(x, 6 + th, 1, 1, Q.b2);
+    if ((x * 5) % 11 === 2) R(x, 8, 1, 1, Q.b3); if ((x * 3) % 13 === 5) R(x, 9, 1, 1, Q.b4);
   }
-  R(53, 7, 3, 3, '#d9b45a'); R(53, 7, 3, 1, '#fff0b0'); R(53, 9, 3, 1, '#98721f');                                     // sambungan
+  R(53, 7, 3, 3, Q.m0); R(53, 7, 3, 1, Q.m1); R(53, 9, 3, 1, Q.m2);                                     // sambungan
   for (x = 56; x <= 70; x++) {
     var t2 = x < 64 ? 2 : 1;
-    R(x, 7, 1, t2, '#92462d'); R(x, 7, 1, 1, '#d77a5c'); if (t2 > 1) R(x, 8, 1, 1, '#561f13');
+    R(x, 7, 1, t2, Q.b0); R(x, 7, 1, 1, Q.b1); if (t2 > 1) R(x, 8, 1, 1, Q.b2);
   }
-  R(71, 6, 2, 3, '#d9b45a'); R(71, 6, 2, 1, '#fff0b0'); R(73, 7, 1, 1, '#d9b45a');                                       // ujung
+  R(71, 6, 2, 3, Q.m0); R(71, 6, 2, 1, Q.m1); R(73, 7, 1, 1, Q.m0);                                       // ujung
   // ring pemandu kawat perak
   [[36, 11], [47, 11], [61, 9], [70, 8]].forEach(function (r) {
     var rx = r[0], ry = r[1];
     R(rx - 1, ry, 1, 3, '#e4e4ec'); R(rx + 1, ry, 1, 3, '#e4e4ec'); R(rx - 1, ry + 2, 3, 1, '#9a9aa8'); R(rx, ry, 1, 1, '#c8c8d2');
   });
   // reel perunggu berlubang (di bawah gagang), engkol, kaki
-  R(12, 11, 5, 2, '#c9a35a'); R(12, 11, 5, 1, '#f0d890');
+  R(12, 11, 5, 2, Q.r5); R(12, 11, 5, 1, Q.r6);
   for (dy = -6; dy <= 6; dy++) for (dx = -6; dx <= 6; dx++) {
     var d2 = dx * dx + dy * dy;
     if (d2 > 33) continue;
-    var col = d2 > 24 ? '#e8c47a' : (d2 > 14 ? '#b9833a' : '#a7742f');
-    if (dx + dy < -3 && d2 > 8) col = '#f6dc9c'; else if (dx + dy > 4 && d2 > 8) col = '#7d4f1d';
+    var col = d2 > 24 ? Q.r0 : (d2 > 14 ? Q.r1 : Q.r2);
+    if (dx + dy < -3 && d2 > 8) col = Q.r3; else if (dx + dy > 4 && d2 > 8) col = Q.r4;
     R(14 + dx, 19 + dy, 1, 1, col);
   }
   for (k = 0; k < 6; k++) { var an = k * Math.PI / 3 + 0.3; R(Math.round(14 + Math.cos(an) * 3.6), Math.round(19 + Math.sin(an) * 3.6), 2, 2, '#2f200e'); }
-  R(13, 18, 3, 3, '#6a4720'); R(14, 19, 1, 1, '#fff0b0');
-  R(20, 18, 5, 2, '#d4bf72'); R(20, 18, 5, 1, '#f6e39a'); R(24, 19, 2, 3, '#8a6420'); R(24, 19, 1, 1, '#d4bf72');
-  R(9, 23, 3, 1, '#c9a35a'); R(8, 24, 2, 1, '#8a6420'); R(7, 22, 2, 2, '#c9a35a');
+  R(13, 18, 3, 3, '#6a4720'); R(14, 19, 1, 1, Q.m1);
+  R(20, 18, 5, 2, '#d4bf72'); R(20, 18, 5, 1, '#f6e39a'); R(24, 19, 2, 3, Q.r7); R(24, 19, 1, 1, '#d4bf72');
+  R(9, 23, 3, 1, Q.r5); R(8, 24, 2, 1, Q.r7); R(7, 22, 2, 2, Q.r5);
   return { canvas: c, ox: 14 / LW, oy: 8.5 / LH };
 }
 function makeFist() {                                   // kepalan tangan kecil (1 px) di atas gagang
@@ -1424,10 +1516,10 @@ function makeFishCanvas(f) {
   if (f.rarity === 'legendary') { px(g, 20, 2, 1, 1, '#fff'); px(g, 2, 11, 1, 1, '#fff'); px(g, 22, 8, 1, 1, '#fff'); }
   return c;
 }
-var ICON = {}, ICON_ROD = '';
+var ICON = {}, ICON_RODS = {};
 function buildIcons() {
   FISH.forEach(function (f) { ICON[f.id] = makeFishCanvas(f).toDataURL(); });
-  ICON_ROD = outlined(makeRod(), '#2a1408', 1).canvas.toDataURL();
+  RODS.forEach(function (r) { ICON_RODS[r.id] = outlined(makeRod(r.style), '#2a1408', 1).canvas.toDataURL(); });
 }
 
 /* =====================================================================
@@ -1459,9 +1551,9 @@ function fitStage() {
 function totalFish() {
   var n = 0; for (var k in Save.data.inv) n += Save.data.inv[k]; return n;
 }
-function speciesValue(id) { var v = 0; Save.data.slots.forEach(function (s, i) { if (s === id) v += priceOf(id, Save.data.kgs[i]); }); return v; }
+function speciesValue(id) { var v = 0; Save.data.slots.forEach(function (s, i) { if (s === id) v += slotPrice(i); }); return v; }
 function totalValue() {
-  var v = 0; Save.data.slots.forEach(function (id, i) { if (id) v += priceOf(id, Save.data.kgs[i]); }); return v;
+  var v = 0; Save.data.slots.forEach(function (id, i) { if (id) v += slotPrice(i); }); return v;
 }
 function fmt(n) { return Math.floor(n).toLocaleString('id-ID'); }
 function rarTag(r) { return '<span class="r-' + r + '">' + RARITY[r].label + '</span>'; }
@@ -1483,6 +1575,8 @@ var UI = {
     $('lvName').textContent = Save.data.name;
     $('lvBar').firstElementChild.style.width = Math.round(li.frac * 100) + '%';
     if (pop) { var b = $('btnProfile'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+    var sp = skillPoints(), sb = $('skillCount'); if (sb) { sb.textContent = sp; sb.style.display = sp > 0 ? '' : 'none'; }
+    if (Modal.cur === 'skill') renderSkills();
   },
   setFishButton: function (label, mode, enabled) {   // mode: '', 'cancel', 'bite'
     var key = label + '|' + mode + '|' + enabled;
@@ -1589,6 +1683,8 @@ function initJoystick() {
 }
 
 /* ---------- Keyboard (untuk tes di komputer) ---------- */
+var IS_PC = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+if (IS_PC) document.documentElement.classList.add('pc');
 var KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down' };
 function initKeyboard() {
   window.addEventListener('keydown', function (e) {
@@ -1600,6 +1696,9 @@ function initKeyboard() {
     else if (e.code === 'KeyE') { if (scene) scene.pressTalk(); }
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
     else if (e.code === 'KeyP') Modal.toggle('profile');
+    else if (e.code === 'KeyK') Modal.toggle('skill');
+    else if (e.code === 'KeyH' || e.code === 'F1' || (e.key === '?')) { Modal.toggle('help'); e.preventDefault(); }
+    else if (e.code === 'KeyQ') { if (!Ctl.modal) cycleRod(); }
     else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (!Ctl.modal) changeZoom(ZOOM_STEP); }
     else if (e.code === 'Minus' || e.code === 'NumpadSubtract') { if (!Ctl.modal) changeZoom(-ZOOM_STEP); }
     else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
@@ -1634,14 +1733,14 @@ var Hotbar = {
       var cls = 'hb' + (i === 0 ? ' rod has' : (id ? ' has' : ' empty')) + (Equip.sel === i ? ' sel' : '');
       if (b.className !== cls) b.className = cls;
       if (id) {
-        var src = i === 0 ? ICON_ROD : ICON[id];
+        var src = i === 0 ? ICON_RODS[Save.data.rod] : ICON[id];
         if (img.getAttribute('src') !== src) img.setAttribute('src', src);
         img.style.visibility = 'visible';
-        b.style.setProperty('--rc', i === 0 ? '#e0b06a' : RARITY[FISH_BY_ID[id].rarity].color);
+        b.style.setProperty('--rc', i === 0 ? curRod().accent : (Save.data.muts[i - 1] ? MUT_BY_ID[Save.data.muts[i - 1]].color : RARITY[FISH_BY_ID[id].rarity].color));
       } else img.style.visibility = 'hidden';
     }
     var sid = heldFishId();
-    this.name.textContent = Equip.sel === 0 ? 'Joran Kayu Pemula' : (sid ? FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
+    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Power ' + curRod().power + ' | Luck +' + totalLuck() + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
   },
   canSwitch: function () {
     var st = scene && scene.fish ? scene.fish.state : 'idle';
@@ -1654,8 +1753,90 @@ var Hotbar = {
     this.render();
     return true;
   },
-  pick: function (i) { if (Ctl.modal) return; this.set(i); }
+  pick: function (i) { if (Ctl.modal) return; if (i === 0 && Equip.sel === 0 && Save.data.rods.length > 1 && this.canSwitch()) { cycleRod(); return; } this.set(i); }
 };
+
+/* ---------- Joran: beli (Coins + level), pakai, ganti ---------- */
+var shopTab = 'fish', rodSel = null;
+function ownsRod(id) { return Save.data.rods.indexOf(id) >= 0; }
+function equipRod(id) {
+  if (!ownsRod(id) || Save.data.rod === id) return true;
+  if (!Hotbar.canSwitch()) { UI.toast('<div>Selesaikan memancing dulu</div>', '#5fe0e6', false, 1100); return false; }
+  Save.data.rod = id; Save.write(); Hotbar.render();
+  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Power ' + RODS_BY_ID[id].power + ' | Luck +' + RODS_BY_ID[id].luck + '</small></div>', RODS_BY_ID[id].accent, false, 1500);
+  return true;
+}
+function cycleRod() {
+  var own = RODS.filter(function (r) { return ownsRod(r.id); });
+  if (own.length < 2) return;
+  var i = own.indexOf(curRod());
+  equipRod(own[(i + 1) % own.length].id);
+}
+function buyRod(id) {
+  var r = RODS_BY_ID[id], d = Save.data;
+  if (!r || ownsRod(id)) return;
+  if (levelInfo(d.xp).level < r.lv) { UI.toast('<div>Butuh Level ' + r.lv + '</div>', '#ff7b7b', false, 1500); return; }
+  if (d.coins < r.price) { UI.toast('<div>Coins kurang ' + fmt(r.price - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
+  d.coins -= r.price; d.rods.push(id); d.rod = Hotbar.canSwitch() ? id : d.rod;
+  Save.write(); UI.setCoins(true); Hotbar.render();
+  npcLine = 'Pilihan bagus! ' + r.name + ' sekarang milikmu.';
+  renderShop();
+}
+function renderRodShop() {
+  var list = $('shopList'), detail = $('shopDetail'), d = Save.data, lv = levelInfo(d.xp).level;
+  list.innerHTML = '';
+  if (!rodSel || !RODS_BY_ID[rodSel]) rodSel = d.rod;
+  RODS.forEach(function (r) {
+    var own = ownsRod(r.id), eq = d.rod === r.id, lock = lv < r.lv && !own;
+    var row = document.createElement('div');
+    row.className = 'row' + (rodSel === r.id ? ' sel' : '') + (lock ? ' locked' : '');
+    row.style.setProperty('--rc', r.accent);
+    row.innerHTML = '<img class="ficon rodi" src="' + ICON_RODS[r.id] + '" alt=""><div class="fname"><b>' + r.name + '</b><span>Power ' + r.power + ' | Luck +' + r.luck + '</span></div>' +
+      '<div class="cnt">' + (eq ? 'Dipakai' : own ? 'Dimiliki' : lock ? 'Lv ' + r.lv : fmt(r.price)) + (!own && !lock ? '<small>Coins</small>' : '') + '</div>';
+    row.addEventListener('click', function () { rodSel = r.id; renderShop(); });
+    list.appendChild(row);
+  });
+  var r = RODS_BY_ID[rodSel], cur = curRod(), own = ownsRod(r.id), lock = lv < r.lv;
+  function dif(a, b) { var x = a - b; return x === 0 ? '' : ' <small style="color:' + (x > 0 ? '#7dff8a' : '#ff8a8a') + '">(' + (x > 0 ? '+' : '') + x + ')</small>'; }
+  var act;
+  if (own) act = d.rod === r.id ? '<button class="btn" type="button" disabled>Sedang dipakai</button>' : '<button class="btn blue" type="button" id="rodEquip">Pakai</button>';
+  else act = '<button class="btn" type="button" id="rodBuy"' + ((lock || d.coins < r.price) ? ' disabled' : '') + '>Beli (' + fmt(r.price) + ' Coins)</button>';
+  detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big rodbig" src="' + ICON_RODS[r.id] + '" alt=""><h3>' + r.name + '</h3>' +
+    '<div class="tag" style="color:' + r.accent + '">' + (lock && !own ? 'Terkunci: butuh Level ' + r.lv : 'Syarat Level ' + r.lv) + '</div>' +
+    '<div class="stat"><span>Power (tenaga tarik)</span><b>' + r.power + (r !== cur ? dif(r.power, cur.power) : '') + '</b></div>' +
+    '<div class="stat"><span>Luck joran</span><b>+' + r.luck + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
+    '<div class="stat"><span>Harga</span><b>' + (r.price ? fmt(r.price) + ' Coins' : 'Gratis') + '</b></div>' +
+    '<p>' + r.desc + '</p><div class="btns">' + act + '</div>';
+  if ($('rodBuy')) $('rodBuy').addEventListener('click', function () { buyRod(r.id); });
+  if ($('rodEquip')) $('rodEquip').addEventListener('click', function () { if (equipRod(r.id)) renderShop(); });
+  $('shopSummary').textContent = 'Coins kamu: ' + fmt(d.coins) + '  |  Level ' + lv;
+}
+
+/* ---------- Panel Skill: 4 jalur, 6 tingkat, dibuka dengan poin ---------- */
+function renderSkills() {
+  var pts = skillPoints(), h = '';
+  SKILL_ORDER.forEach(function (k) {
+    var S = SKILLS[k], tier = skillTier(k), t;
+    h += '<div class="skCol" style="--sc:' + S.color + '"><div class="skHead"><b>' + S.name + '</b><span>' + S.eff(S.val[tier], tier) + '</span><small>' + S.desc + '</small></div>';
+    if (tier >= 6) h += '<button class="btn small" type="button" disabled>MAKSIMAL</button>';
+    else h += '<button class="btn small skBuy" type="button" data-k="' + k + '"' + (pts < SKILL_COST[tier] ? ' disabled' : '') + '>Upgrade (' + SKILL_COST[tier] + ' poin)</button>';
+    h += '<div class="skNodes">';
+    for (t = 1; t <= 6; t++) {
+      var st = t <= tier ? 'done' : (t === tier + 1 ? 'next' : 'lock');
+      h += '<div class="skNode ' + st + '"><i>' + t + '</i><div><b>' + S.perks[t - 1] + '</b><span>' + S.eff(S.val[t], t) + '</span></div><em>' + SKILL_COST[t - 1] + '</em></div>';
+    }
+    h += '</div></div>';
+  });
+  $('skillCols').innerHTML = h;
+  $('skillPts').textContent = 'Poin skill: ' + pts;
+  $('skillInfo').textContent = 'Luck total +' + totalLuck() + ' (joran +' + curRod().luck + ', skill +' + skillVal('luck') + ')  |  Power joran ' + curRod().power;
+}
+function buySkill(k) {
+  var tier = skillTier(k);
+  if (!SKILLS[k] || tier >= 6 || skillPoints() < SKILL_COST[tier]) return;
+  Save.data.skills[k] = tier + 1; Save.write();
+  UI.setLevel(false); renderSkills();
+}
 
 /* ---------- Modal Inventory & Toko ---------- */
 var invSel = null, shopSel = null, resetArm = 0;
@@ -1674,10 +1855,13 @@ var Modal = {
     $('panelInv').hidden = name !== 'inv';
     $('panelShop').hidden = name !== 'shop';
     $('panelProfile').hidden = name !== 'profile';
+    $('panelSkill').hidden = name !== 'skill';
+    $('panelHelp').hidden = name !== 'help';
     Ctl.modal = true; Ctl.sprint = false; resetJoy();
     if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Reset Data'; renderInventory(); }
-    if (name === 'shop') { npcLine = NPC_SAY.hi; renderShop(); }
+    if (name === 'shop') { npcLine = NPC_SAY.hi; shopTab = 'fish'; renderShop(); }
     if (name === 'profile') renderProfile();
+    if (name === 'skill') renderSkills();
   },
   close: function () {
     if (!this.cur) return;
@@ -1731,10 +1915,11 @@ function slotDetailHTML(i) {
   var id = Save.data.slots[i];
   if (!id) return '<div class="empty">Kotak ' + (i + 1) + ' kosong.<br>' + (moveFrom !== null ? 'Ketuk untuk memindahkan ikan ke sini.' : 'Ikan hasil tangkapan masuk ke kotak kosong pertama.') + '</div>';
   var f = FISH_BY_ID[id];
-  return '<img class="big" src="' + ICON[id] + '" alt=""><h3>' + f.name + '</h3><div class="tag">' + rarTag(f.rarity) + '</div>' +
+  return '<img class="big" src="' + ICON[id] + '" alt=""><h3>' + mutTag(Save.data.muts[i]) + f.name + '</h3><div class="tag">' + rarTag(f.rarity) + '</div>' +
     '<div class="stat"><span>Kotak</span><b>' + (i + 1) + (i < NHOT ? ' (hotbar ' + (i + 2) + ')' : '') + '</b></div>' +
     '<div class="stat"><span>Berat</span><b>' + fmtKg(Save.data.kgs[i]) + '</b></div>' +
-    '<div class="stat"><span>Harga jual</span><b>' + fmt(priceOf(id, Save.data.kgs[i])) + ' Coins</b></div>' +
+    (Save.data.muts[i] ? '<div class="stat"><span>Mutasi</span><b>' + mutTag(Save.data.muts[i]) + 'x' + mutMult(Save.data.muts[i]).toString().replace('.', ',') + ' harga</b></div>' : '') +
+    '<div class="stat"><span>Harga jual</span><b>' + fmt(slotPrice(i)) + ' Coins</b></div>' +
     '<div class="stat"><span>Rekor jenis ini</span><b>' + fmtKg(Save.data.record[id] || Save.data.kgs[i]) + '</b></div>' +
     '<div class="stat"><span>Total tertangkap</span><b>' + (Save.data.caught[id] || 0) + '</b></div>' +
     '<p>' + f.desc + '</p><div class="btns">' +
@@ -1747,11 +1932,11 @@ function renderBag() {
   Save.data.slots.forEach(function (id, i) {
     var d = document.createElement('div');
     d.className = 'slot' + (i < NHOT ? ' hot' : '') + (id ? ' has' : '') + (slotSel === i ? ' sel' : '') + (moveFrom === i ? ' mv' : '');
-    if (id) d.style.setProperty('--rc', RARITY[FISH_BY_ID[id].rarity].color);
-    d.innerHTML = (i < NHOT ? '<b class="sk">' + (i + 2) + '</b>' : '') + (id ? '<img src="' + ICON[id] + '" alt=""><b class="kg">' + fmtNum(Save.data.kgs[i]) + '</b><i class="rb"></i>' : '');
+    if (id) d.style.setProperty('--rc', Save.data.muts[i] ? MUT_BY_ID[Save.data.muts[i]].color : RARITY[FISH_BY_ID[id].rarity].color);
+    d.innerHTML = (i < NHOT ? '<b class="sk">' + (i + 2) + '</b>' : '') + (id && Save.data.muts[i] ? '<b class="mt" style="color:' + MUT_BY_ID[Save.data.muts[i]].color + '">&#10022;</b>' : '') + (id ? '<img src="' + ICON[id] + '" alt=""><b class="kg">' + fmtNum(Save.data.kgs[i]) + '</b><i class="rb"></i>' : '');
     d.addEventListener('click', function () {
       if (moveFrom !== null) {
-        var sl = Save.data.slots, kg = Save.data.kgs, t = sl[moveFrom], tk = kg[moveFrom]; sl[moveFrom] = sl[i]; sl[i] = t; kg[moveFrom] = kg[i]; kg[i] = tk;
+        var sl = Save.data.slots, kg = Save.data.kgs, mu = Save.data.muts, t = sl[moveFrom], tk = kg[moveFrom], tm = mu[moveFrom]; sl[moveFrom] = sl[i]; sl[i] = t; kg[moveFrom] = kg[i]; kg[i] = tk; mu[moveFrom] = mu[i]; mu[i] = tm;
         moveFrom = null; slotSel = i; Save.write(); Hotbar.render();
       } else slotSel = i;
       renderBag();
@@ -1791,7 +1976,7 @@ function addXp(amount) {
   for (l = before + 1; l <= after; l++) coins += levelReward(l);
   if (coins) { Save.data.coins += coins; UI.setCoins(true); }
   UI.setLevel(true);
-  return { up: after > before, level: after, coins: coins };
+  return { up: after > before, level: after, coins: coins, gained: after - before };
 }
 
 /* ---------- Profil karakter ---------- */
@@ -1852,8 +2037,8 @@ function lightestIdx(id) {
 }
 function sellFish(id, all) {                          // jual 1 = ikan paling ringan dari jenis itu
   var sl = Save.data.slots, kg = Save.data.kgs, cnt = 0, earn = 0, i;
-  if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { earn += priceOf(id, kg[i]); sl[i] = null; kg[i] = null; cnt++; } }
-  else { var li = lightestIdx(id); if (li >= 0) { earn = priceOf(id, kg[li]); sl[li] = null; kg[li] = null; cnt = 1; } }
+  if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { earn += slotPrice(i); sl[i] = null; kg[i] = null; Save.data.muts[i] = null; cnt++; } }
+  else { var li = lightestIdx(id); if (li >= 0) { earn = slotPrice(li); sl[li] = null; kg[li] = null; Save.data.muts[li] = null; cnt = 1; } }
   if (!cnt) return;
   syncInv();
   Save.data.coins += earn;
@@ -1864,9 +2049,9 @@ function sellFish(id, all) {                          // jual 1 = ikan paling ri
 }
 function sellEverything() {
   var cnt = 0, earn = 0;
-  Save.data.slots.forEach(function (id, i) { if (id) { cnt++; earn += priceOf(id, Save.data.kgs[i]); } });
+  Save.data.slots.forEach(function (id, i) { if (id) { cnt++; earn += slotPrice(i); } });
   if (!cnt) return;
-  Save.data.slots = cleanSlots(null); Save.data.kgs = blankKgs(); syncInv();
+  Save.data.slots = cleanSlots(null); Save.data.kgs = blankKgs(); Save.data.muts = blankKgs(); syncInv();
   Save.data.coins += earn;
   Save.write();
   UI.setCoins(true); UI.setBag(); Hotbar.render();
@@ -1874,6 +2059,9 @@ function sellEverything() {
   renderShop();
 }
 function renderShop() {
+  $('tabShopFish').classList.toggle('on', shopTab === 'fish'); $('tabShopRod').classList.toggle('on', shopTab === 'rod');
+  $('btnSellAll').style.display = shopTab === 'fish' ? '' : 'none';
+  if (shopTab === 'rod') { renderRodShop(); return; }
   var list = $('shopList'), detail = $('shopDetail');
   list.innerHTML = '';
   var owned = FISH.filter(function (f) { return (Save.data.inv[f.id] || 0) > 0; });
@@ -1890,7 +2078,7 @@ function renderShop() {
   if (shopSel) {
     var f = FISH_BY_ID[shopSel], li = lightestIdx(shopSel);
     detail.innerHTML = say + fishDetailHTML(f,
-      '<div class="btns"><button class="btn blue" type="button" id="sell1">Jual Teringan (+' + fmt(priceOf(shopSel, Save.data.kgs[li])) + ')</button>' +
+      '<div class="btns"><button class="btn blue" type="button" id="sell1">Jual Teringan (+' + fmt(slotPrice(li)) + ')</button>' +
       '<button class="btn" type="button" id="sellN">Jual Semua (+' + fmt(speciesValue(shopSel)) + ')</button></div>');
     $('sell1').addEventListener('click', function () { sellFish(shopSel, false); });
     $('sellN').addEventListener('click', function () { sellFish(shopSel, true); });
@@ -1923,6 +2111,12 @@ function initButtons() {
   });
   pn.addEventListener('keydown', function (e) { if (e.key === 'Enter') pn.blur(); });
   pn.addEventListener('focus', function () { try { pn.select(); } catch (err) { /* abaikan */ } });
+  $('tabShopFish').addEventListener('click', function () { shopTab = 'fish'; renderShop(); });
+  $('tabShopRod').addEventListener('click', function () { shopTab = 'rod'; npcLine = 'Joran bagus bikin tangkapan lebih besar. Butuh level dan Coins yang cukup, ya!'; renderShop(); });
+  press('btnSkill', function () { Modal.toggle('skill'); });
+  press('btnHelp', function () { Modal.toggle('help'); });
+  $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k')); });
+  Array.prototype.forEach.call(document.querySelectorAll('button'), function (b) { b.addEventListener('mousedown', function (e) { e.preventDefault(); }); });   // tombol tidak menyimpan fokus => Spasi tidak menekan ulang tombol
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
   $('tabCol').addEventListener('click', function () { invTab = 'col'; renderInventory(); });
   $('btnFull').addEventListener('pointerdown', function (e) {
@@ -2017,6 +2211,7 @@ function createSceneClass() {
       this.textures.addCanvas('deep', makeDeep());
       this.textures.get('deep').setFilter(Phaser.Textures.FilterMode.LINEAR);
       var rd = outlined(makeRod(), '#2a1408', 1); this.textures.addCanvas('rod', rd.canvas); this.rodOrg = [rd.ox, rd.oy];
+      var selfT = this; RODS.forEach(function (r) { selfT.textures.addCanvas('rod_' + r.id, outlined(makeRod(r.style), '#2a1408', 1).canvas); });
       this.textures.addCanvas('fist', outlined(makeFist(), '#5a3318', 1).canvas);
       this.textures.addCanvas('bobber', makeBobber());
       var isl = this.isl = makeIsland(M);
@@ -2178,6 +2373,7 @@ function createSceneClass() {
 
       UI.setCoins(false); UI.setBag();
       $('loading').classList.add('gone');
+      if (IS_PC) UI.hint('PC: WASD / panah = jalan | Shift = lari | TAHAN Spasi lalu lepas = lempar | E = toko | K = skill | H = semua kontrol', 11000); else
       UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR: bar naik lalu turun lagi. Lepas tepat saat bar penuh untuk lemparan terjauh!', 9000);
     }
 
@@ -2247,7 +2443,8 @@ function createSceneClass() {
     /* Phaser: flipX memantulkan gambar terhadap TENGAH frame (titik asal tidak ikut berpindah).
        Agar titik pegang tetap di tangan saat menghadap kiri, titik asal dicerminkan juga. */
     placeRod(hand, ang, back) {
-      var p = this.foot, left = Math.cos(ang) < 0;
+      var p = this.foot, left = Math.cos(ang) < 0, rk = 'rod_' + Save.data.rod;
+      if (this.rodKey !== rk) { this.rodKey = rk; this.rod.setTexture(rk); }
       this.rod.setOrigin(left ? 1 - this.rodOrg[0] : this.rodOrg[0], this.rodOrg[1]).setFlipX(left)
         .setRotation(left ? ang - Math.PI : ang).setPosition(hand.x, hand.y).setDepth(back ? p.y + 0.2 : p.y + 2).setVisible(true);
       this.fist.setVisible(!back).setPosition(hand.x, hand.y).setDepth(p.y + 2.3);   // kepalan tangan menggenggam gagang
@@ -2338,10 +2535,11 @@ function createSceneClass() {
       }
     }
     startBite() {
-      var f = this.fish, luck = f.luck || 0;          // makin jauh lemparan, makin besar peluang ikan langka
+      var f = this.fish, luck = (f.luck || 0) + totalLuck() * 0.05;   // lemparan jauh + luck joran + skill Hoki => ikan langka lebih sering
       f.def = rollFish(luck);
-      f.kg = rollKg(f.def, luck);
-      f.window = RARITY[f.def.rarity].window;
+      f.kg = rollKg(f.def, luck, skillTier('big'));
+      f.mut = rollMut();
+      f.window = RARITY[f.def.rarity].window * SKILLS.swift.val[skillTier('swift')];
       f.state = 'bite'; f.t = 0;
       this.splash(f.bx, f.by);
       this.bang.setVisible(true);
@@ -2359,7 +2557,8 @@ function createSceneClass() {
     }
     startReel() {
       var f = this.fish;
-      f.state = 'reel'; f.t = 0; f.prog = 0.25; f.kick = 0; f.pulls = 0; f.reel = REEL[f.def.rarity];
+      f.state = 'reel'; f.t = 0; f.prog = 0.25; f.kick = 0; f.pulls = 0; var pw = curRod().power - 1, rb = REEL[f.def.rarity];
+      f.reel = { gain: rb.gain * (1 + 0.18 * pw), decay: rb.decay * (1 - 0.07 * pw) };      // power joran: tarikan lebih kuat, ikan lebih lambat menang
       this.bang.setVisible(false);
       this.reelPull();
     }
@@ -2381,22 +2580,23 @@ function createSceneClass() {
       var self = this, f = this.fish, def = f.def;
       if (!def) return;
       var first = !(Save.data.caught[def.id] > 0);
-      var kg = f.kg || defaultKg(def), price = priceOf(def.id, kg);
-      if (addFishSlot(def.id, kg) < 0) { Save.data.coins += price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
+      var kg = f.kg || defaultKg(def), mut = f.mut || null, mm = mutMult(mut), price = Math.max(1, Math.round(priceOf(def.id, kg) * mm));
+      if (addFishSlot(def.id, kg, mut) < 0) { Save.data.coins += price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
       f.caughtId = def.id; f.caughtKg = kg;
       var isRec = kg > (Save.data.record[def.id] || 0);
       if (isRec) Save.data.record[def.id] = kg;
       Save.data.caught[def.id] = (Save.data.caught[def.id] || 0) + 1;
-      var gainXp = xpOf(def, kg) + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
+      var gainXp = Math.round(xpOf(def, kg) * (1 + (mm - 1) * 0.5)) + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
       this.savePos();
       UI.setBag(); Hotbar.render();
-      var rc = RARITY[def.rarity].color, bx = f.bx, by = f.by, foot = this.foot;
+      var rc = mut ? MUT_BY_ID[mut].color : RARITY[def.rarity].color, bx = f.bx, by = f.by, foot = this.foot;
       f.state = 'cooldown'; f.t = 0; f.def = null; f.caught = true;
       this.hideFishing();
       this.splash(bx, by);
 
       // ikan melompat dari air ke pemain
       var jump = this.add.image(bx, by, 'fish_' + def.id).setScale(fishScale(kg)).setDepth(9600);
+      if (mut) jump.setTint(parseInt(MUT_BY_ID[mut].color.slice(1), 16));
       this.tweens.addCounter({
         from: 0, to: 1, duration: 650,
         onUpdate: function (tw) {
@@ -2409,13 +2609,13 @@ function createSceneClass() {
 
       var r = RARITY[def.rarity];
       UI.toast(
-        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : '')) + def.name +
+        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : '')) + mutTag(mut) + def.name +
         '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - ' + fmtKg(kg) + '</small>' +
         '<small>Jual ' + fmt(price) + ' Coins - +' + gainXp + ' XP</small></div>',
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
       if (lvUp.up) {                                   // pesan naik level muncul setelah pesan ikan selesai
         setTimeout(function () {
-          UI.toast('<div>NAIK LEVEL! Level ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Coins</small></div>', '#ffd54a', true, 3400);
+          UI.toast('<div>NAIK LEVEL! Level ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Coins</small><small>+' + lvUp.gained + ' Poin Skill (tekan K)</small></div>', '#ffd54a', true, 3400);
         }, def.rarity === 'legendary' ? 4100 : 2900);
       }
     }
@@ -2519,7 +2719,7 @@ function createSceneClass() {
           by = f.launch.y + (g.ty - f.launch.y) * pr - Math.sin(pr * Math.PI) * (30 + 55 * (f.castPower || 0));
           sag = 4;
           if (pr >= 1) {
-            f.state = 'waiting'; f.t = 0; f.wait = 2 + Math.random() * 3.5;
+            f.state = 'waiting'; f.t = 0; f.wait = (2 + Math.random() * 3.5) * SKILLS.swift.wait[skillTier('swift')];
             this.splash(g.tx, g.ty);
           }
         }
@@ -2622,6 +2822,7 @@ function start() {
 }
 
 window.__TF = {
+  Save: Save, levelInfo: levelInfo, skillPoints: skillPoints, buySkill: buySkill, buyRod: buyRod, equipRod: equipRod, rollMut: rollMut, totalLuck: totalLuck, slotPrice: slotPrice, renderShop: renderShop, setShopTab: function (t) { shopTab = t; }, RODS: RODS, SKILLS: SKILLS,
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
   makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp, priceOf: priceOf, xpOf: xpOf, rollKg: rollKg
