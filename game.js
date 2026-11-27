@@ -38,11 +38,11 @@ var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
    minPower = power joran minimal agar rarity ini bisa muncul dari gigitan (joran lebih lemah: rarity ini tidak pernah muncul).
    p0 = peluang (%) tanpa luck; p1 = peluang (%) saat luck maksimal. Peluang tiap rarity otomatis dinormalkan. */
 var RARITY = {
-  common:    { label: 'Common',    color: '#cfd8dc', window: 1.8,  minPower: 1, p0: 72,   p1: 30 },
-  uncommon:  { label: 'Uncommon',  color: '#5fd56a', window: 1.5,  minPower: 1, p0: 22,   p1: 32 },
-  rare:      { label: 'Rare',      color: '#4aa8ff', window: 1.25, minPower: 2, p0: 5.5,  p1: 25 },
-  epic:      { label: 'Epic',      color: '#c96bff', window: 1.0,  minPower: 2, p0: 0.5,  p1: 10 },
-  legendary: { label: 'Legendary', color: '#ffc23a', window: 0.85, minPower: 3, p0: 0.02, p1: 3  }
+  common:    { label: 'Biasa',     color: '#cfd8dc', window: 1.8,  minPower: 1, p0: 72,   p1: 30 },
+  uncommon:  { label: 'Tidak Biasa', color: '#5fd56a', window: 1.5,  minPower: 1, p0: 22,   p1: 32 },
+  rare:      { label: 'Langka',    color: '#4aa8ff', window: 1.25, minPower: 2, p0: 5.5,  p1: 25 },
+  epic:      { label: 'Epik',      color: '#c96bff', window: 1.0,  minPower: 2, p0: 0.5,  p1: 10 },
+  legendary: { label: 'Legendaris', color: '#ffc23a', window: 0.85, minPower: 3, p0: 0.02, p1: 3  }
 };
 function reelOf(r) { return REEL[r] || REEL.legendary; }
 function xpBase(r) { return XP_FISH[r] || XP_FISH.legendary; }
@@ -97,7 +97,7 @@ var RODS = [
   { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 90, accent: '#6fe3d2',
     style: { b0: '#5fa8b8', b1: '#bff0f8', b2: '#2a5f70', b3: '#4a8fa0', b4: '#3a7788', w0: '#2a3a48', w1: '#3c5266', w2: '#506a82', wh0: '#6a88a4', wh1: '#8fb0cc', wd: '#141e28', wm: '#1e2c3a',
       m0: '#e6e8f0', m1: '#ffffff', m2: '#8a90a2', m3: '#c0c5d4', r0: '#9fe6f0', r1: '#4aa0b4', r2: '#62bcd0', r3: '#e6fcff', r4: '#2f7488', r5: '#bfeaf2', r6: '#f2feff', r7: '#4a8fa0' },
-    desc: 'Power sama seperti joran karbon, tetapi diberkahi luck jauh lebih besar.' },
+    desc: 'Tenaga sama seperti joran karbon, tetapi diberkahi hoki jauh lebih besar.' },
   { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 130, accent: '#d28cff',
     style: { b0: '#b03ad0', b1: '#f08aff', b2: '#5a1a78', b3: '#9a2cba', b4: '#7e2298', w0: '#3a1a5a', w1: '#552a80', w2: '#6e3ca0', wh0: '#8a58c0', wh1: '#b088e0', wd: '#20103a', wm: '#2c164a',
       m0: '#ffd34a', m1: '#fff7b0', m2: '#b8860b', m3: '#e6b422', r0: '#ffd34a', r1: '#b8860b', r2: '#e6b422', r3: '#fff7b0', r4: '#7a5a08', r5: '#ffe27a', r6: '#fff2b0', r7: '#9a7410' },
@@ -124,7 +124,7 @@ function fmtP(v) { return String(v).replace('.', ','); }
 var SKILLS = {
   luck:  { name: 'Hoki', color: '#6fe36f', val: [0, 6, 13, 21, 31, 44, 60],
     perks: ['Jimat Kecil', 'Hari Cerah', 'Angin Baik', 'Berkah Laut', 'Bintang Nelayan', 'Dewi Fortuna'],
-    eff: function (v) { return 'Luck +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan luck joran dan umpan; makin tinggi, tambahannya makin kecil).' },
+    eff: function (v) { return 'Hoki +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan hoki joran dan umpan; makin tinggi, tambahannya makin kecil).' },
   mut:   { name: 'Mutasi', color: '#d28cff', val: [0, 0.5, 1, 1.6, 2.3, 3.1, 4],
     perks: ['Air Aneh', 'Arus Misterius', 'Cahaya Ganjil', 'Pasang Kosmik', 'Gelombang Gen', 'Evolusi'],
     eff: function (v) { return 'Mutasi +' + fmtP(v) + '%'; }, desc: 'Menambah peluang ikan bermutasi (dasar 0,5%). Harga mutasi berlipat.' },
@@ -159,7 +159,7 @@ function baitCount(id) { return (Save.data.baits && Save.data.baits[id]) | 0; }
 function activeBait() { var b = BAITS_BY_ID[Save.data.bait]; return b && baitCount(b.id) > 0 ? b : null; }
 function baitSummary(b) {
   var t = [];
-  if (b.luck) t.push('Luck +' + b.luck);
+  if (b.luck) t.push('Hoki +' + b.luck);
   if (b.mut) t.push('Mutasi +' + fmtP(b.mut) + '%');
   if (b.big) t.push('Jumbo +' + b.big + '%');
   return t.join(' | ');
@@ -1802,6 +1802,7 @@ function initKeyboard() {
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
     else if (e.code === 'KeyP') Modal.toggle('profile');
     else if (e.code === 'KeyK') Modal.toggle('skill');
+    else if (e.code === 'KeyN') Modal.toggle('book');
     else if (e.code === 'KeyH' || e.code === 'F1' || (e.key === '?')) { Modal.toggle('help'); e.preventDefault(); }
     else if (e.code === 'KeyQ') { if (!Ctl.modal) cycleRod(); }
     else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (!Ctl.modal) changeZoom(ZOOM_STEP); }
@@ -1856,7 +1857,7 @@ var Hotbar = {
     }
     var sid = heldFishId();
     var abn = activeBait();
-    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Power ' + curRod().power + ' | Luck +' + totalLuck() + ' | Umpan: ' + (abn ? abn.name + ' x' + baitCount(abn.id) : 'tidak ada') + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
+    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Tenaga ' + curRod().power + ' | Hoki +' + totalLuck() + ' | Umpan: ' + (abn ? abn.name + ' x' + baitCount(abn.id) : 'tidak ada') + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
   },
   canSwitch: function () {
     var st = scene && scene.fish ? scene.fish.state : 'idle';
@@ -1879,7 +1880,7 @@ function equipRod(id) {
   if (!ownsRod(id) || Save.data.rod === id) return true;
   if (!Hotbar.canSwitch()) { UI.toast('<div>Selesaikan memancing dulu</div>', '#5fe0e6', false, 1100); return false; }
   Save.data.rod = id; Save.write(); Hotbar.render();
-  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Power ' + RODS_BY_ID[id].power + ' | Luck +' + RODS_BY_ID[id].luck + '</small><small>Rarity tertinggi: ' + RARITY[maxRarity(RODS_BY_ID[id].power)].label + '</small></div>', RODS_BY_ID[id].accent, false, 1800);
+  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Tenaga ' + RODS_BY_ID[id].power + ' | Hoki +' + RODS_BY_ID[id].luck + '</small><small>Kelangkaan tertinggi: ' + RARITY[maxRarity(RODS_BY_ID[id].power)].label + '</small></div>', RODS_BY_ID[id].accent, false, 1800);
   return true;
 }
 function cycleRod() {
@@ -1891,8 +1892,8 @@ function cycleRod() {
 function buyRod(id) {
   var r = RODS_BY_ID[id], d = Save.data;
   if (!r || ownsRod(id)) return;
-  if (levelInfo(d.xp).level < r.lv) { UI.toast('<div>Butuh Level ' + r.lv + '</div>', '#ff7b7b', false, 1500); return; }
-  if (d.coins < r.price) { UI.toast('<div>Coins kurang ' + fmt(r.price - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
+  if (levelInfo(d.xp).level < r.lv) { UI.toast('<div>Butuh Tingkat ' + r.lv + '</div>', '#ff7b7b', false, 1500); return; }
+  if (d.coins < r.price) { UI.toast('<div>Koin kurang ' + fmt(r.price - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
   d.coins -= r.price; d.rods.push(id); d.rod = Hotbar.canSwitch() ? id : d.rod;
   Save.write(); UI.setCoins(true); Hotbar.render();
   npcLine = 'Pilihan bagus! ' + r.name + ' sekarang milikmu.';
@@ -1907,8 +1908,8 @@ function renderRodShop() {
     var row = document.createElement('div');
     row.className = 'row' + (rodSel === r.id ? ' sel' : '') + (lock ? ' locked' : '');
     row.style.setProperty('--rc', r.accent);
-    row.innerHTML = '<img class="ficon rodi" src="' + ICON_RODS[r.id] + '" alt=""><div class="fname"><b>' + r.name + '</b><span>Power ' + r.power + ' | Luck +' + r.luck + '</span></div>' +
-      '<div class="cnt">' + (eq ? 'Dipakai' : own ? 'Dimiliki' : lock ? 'Lv ' + r.lv : fmt(r.price)) + (!own && !lock ? '<small>Coins</small>' : '') + '</div>';
+    row.innerHTML = '<img class="ficon rodi" src="' + ICON_RODS[r.id] + '" alt=""><div class="fname"><b>' + r.name + '</b><span>Tenaga ' + r.power + ' | Hoki +' + r.luck + '</span></div>' +
+      '<div class="cnt">' + (eq ? 'Dipakai' : own ? 'Dimiliki' : lock ? 'Tk ' + r.lv : fmt(r.price)) + (!own && !lock ? '<small>Koin</small>' : '') + '</div>';
     row.addEventListener('click', function () { rodSel = r.id; renderShop(); });
     list.appendChild(row);
   });
@@ -1916,17 +1917,17 @@ function renderRodShop() {
   function dif(a, b) { var x = a - b; return x === 0 ? '' : ' <small style="color:' + (x > 0 ? '#7dff8a' : '#ff8a8a') + '">(' + (x > 0 ? '+' : '') + x + ')</small>'; }
   var act;
   if (own) act = d.rod === r.id ? '<button class="btn" type="button" disabled>Sedang dipakai</button>' : '<button class="btn blue" type="button" id="rodEquip">Pakai</button>';
-  else act = '<button class="btn" type="button" id="rodBuy"' + ((lock || d.coins < r.price) ? ' disabled' : '') + '>Beli (' + fmt(r.price) + ' Coins)</button>';
+  else act = '<button class="btn" type="button" id="rodBuy"' + ((lock || d.coins < r.price) ? ' disabled' : '') + '>Beli (' + fmt(r.price) + ' Koin)</button>';
   detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big rodbig" src="' + ICON_RODS[r.id] + '" alt=""><h3>' + r.name + '</h3>' +
-    '<div class="tag" style="color:' + r.accent + '">' + (lock && !own ? 'Terkunci: butuh Level ' + r.lv : 'Syarat Level ' + r.lv) + '</div>' +
-    '<div class="stat"><span>Power (tenaga tarik)</span><b>' + r.power + (r !== cur ? dif(r.power, cur.power) : '') + '</b></div>' +
-    '<div class="stat"><span>Luck joran</span><b>+' + r.luck + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
-    '<div class="stat"><span>Rarity tertinggi</span><b>' + rarTag(maxRarity(r.power)) + '</b></div>' +
-    '<div class="stat"><span>Harga</span><b>' + (r.price ? fmt(r.price) + ' Coins' : 'Gratis') + '</b></div>' +
+    '<div class="tag" style="color:' + r.accent + '">' + (lock && !own ? 'Terkunci: butuh Tingkat ' + r.lv : 'Syarat Tingkat ' + r.lv) + '</div>' +
+    '<div class="stat"><span>Tenaga tarik</span><b>' + r.power + (r !== cur ? dif(r.power, cur.power) : '') + '</b></div>' +
+    '<div class="stat"><span>Hoki joran</span><b>+' + r.luck + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
+    '<div class="stat"><span>Kelangkaan tertinggi</span><b>' + rarTag(maxRarity(r.power)) + '</b></div>' +
+    '<div class="stat"><span>Harga</span><b>' + (r.price ? fmt(r.price) + ' Koin' : 'Gratis') + '</b></div>' +
     '<p>' + r.desc + '</p><div class="btns">' + act + '</div>';
   if ($('rodBuy')) $('rodBuy').addEventListener('click', function () { buyRod(r.id); });
   if ($('rodEquip')) $('rodEquip').addEventListener('click', function () { if (equipRod(r.id)) renderShop(); });
-  $('shopSummary').textContent = 'Coins kamu: ' + fmt(d.coins) + '  |  Level ' + lv;
+  $('shopSummary').textContent = 'Koin kamu: ' + fmt(d.coins) + '  |  Tingkat ' + lv;
 }
 
 /* ---------- Umpan: pilih, ganti (hotbar 8), beli di toko ---------- */
@@ -1944,9 +1945,9 @@ function buyBait(id, packs) {
   var b = BAITS_BY_ID[id], d = Save.data;
   if (!b) return;
   var n = BAIT_PACK * packs, cost = b.price * packs;
-  if (levelInfo(d.xp).level < b.lv) { UI.toast('<div>Butuh Level ' + b.lv + '</div>', '#ff7b7b', false, 1500); return; }
+  if (levelInfo(d.xp).level < b.lv) { UI.toast('<div>Butuh Tingkat ' + b.lv + '</div>', '#ff7b7b', false, 1500); return; }
   if (baitCount(id) + n > BAIT_MAX) { UI.toast('<div>Umpan penuh (maks ' + BAIT_MAX + ')</div>', '#ff7b7b', false, 1500); return; }
-  if (d.coins < cost) { UI.toast('<div>Coins kurang ' + fmt(cost - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
+  if (d.coins < cost) { UI.toast('<div>Koin kurang ' + fmt(cost - d.coins) + '</div>', '#ff7b7b', false, 1500); return; }
   d.coins -= cost; d.baits[id] = baitCount(id) + n;
   if (!activeBait()) d.bait = id;                    // belum ada umpan aktif => langsung dipakai
   Save.write(); UI.setCoins(true); Hotbar.render();
@@ -1962,15 +1963,15 @@ function renderBaitShop() {
     row.className = 'row' + (baitSel === b.id ? ' sel' : '') + (lock ? ' locked' : '');
     row.style.setProperty('--rc', b.accent);
     row.innerHTML = '<img class="ficon baiti" src="' + ICON_BAITS[b.id] + '" alt=""><div class="fname"><b>' + b.name + '</b><span>' + baitSummary(b) + '</span></div>' +
-      '<div class="cnt">' + (lock ? 'Lv ' + b.lv : (n ? 'x' + n : fmt(b.price)) ) + (!lock ? '<small>' + (n ? 'dimiliki' : 'Coins / ' + BAIT_PACK) + '</small>' : '') + '</div>';
+      '<div class="cnt">' + (lock ? 'Tk ' + b.lv : (n ? 'x' + n : fmt(b.price)) ) + (!lock ? '<small>' + (n ? 'dimiliki' : 'Koin / ' + BAIT_PACK) + '</small>' : '') + '</div>';
     row.addEventListener('click', function () { baitSel = b.id; renderShop(); });
     list.appendChild(row);
   });
   var b = BAITS_BY_ID[baitSel], lock = lv < b.lv, n = baitCount(b.id), cur = activeBait(), on = cur === b;
   var buyDis = function (packs) { return (lock || d.coins < b.price * packs || n + BAIT_PACK * packs > BAIT_MAX) ? ' disabled' : ''; };
   detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big baitbig" src="' + ICON_BAITS[b.id] + '" alt=""><h3>' + b.name + '</h3>' +
-    '<div class="tag" style="color:' + b.accent + '">' + (lock ? 'Terkunci: butuh Level ' + b.lv : 'Syarat Level ' + b.lv) + '</div>' +
-    '<div class="stat"><span>Luck</span><b>' + (b.luck ? '+' + b.luck : '-') + '</b></div>' +
+    '<div class="tag" style="color:' + b.accent + '">' + (lock ? 'Terkunci: butuh Tingkat ' + b.lv : 'Syarat Tingkat ' + b.lv) + '</div>' +
+    '<div class="stat"><span>Hoki</span><b>' + (b.luck ? '+' + b.luck : '-') + '</b></div>' +
     '<div class="stat"><span>Peluang mutasi</span><b>' + (b.mut ? '+' + fmtP(b.mut) + '%' : '-') + '</b></div>' +
     '<div class="stat"><span>Peluang ikan jumbo</span><b>' + (b.big ? '+' + b.big + '%' : '-') + '</b></div>' +
     '<div class="stat"><span>Dimiliki</span><b>' + n + '</b></div>' +
@@ -1981,7 +1982,7 @@ function renderBaitShop() {
   $('baitBuy1').addEventListener('click', function () { buyBait(b.id, 1); });
   $('baitBuy5').addEventListener('click', function () { buyBait(b.id, 5); });
   if ($('baitUse')) $('baitUse').addEventListener('click', function () { setBait(on ? null : b.id); renderShop(); });
-  $('shopSummary').textContent = 'Coins kamu: ' + fmt(d.coins) + '  |  Level ' + lv + '  |  Umpan aktif: ' + (cur ? cur.name + ' x' + baitCount(cur.id) : 'tidak ada');
+  $('shopSummary').textContent = 'Koin kamu: ' + fmt(d.coins) + '  |  Tingkat ' + lv + '  |  Umpan aktif: ' + (cur ? cur.name + ' x' + baitCount(cur.id) : 'tidak ada');
 }
 
 /* ---------- Panel Skill: 4 jalur, 6 tingkat, dibuka dengan poin ---------- */
@@ -1991,7 +1992,7 @@ function renderSkills() {
     var S = SKILLS[k], tier = skillTier(k), t;
     h += '<div class="skCol" style="--sc:' + S.color + '"><div class="skHead"><b>' + S.name + '</b><span>' + S.eff(S.val[tier], tier) + '</span><small>' + S.desc + '</small></div>';
     if (tier >= 6) h += '<button class="btn small" type="button" disabled>MAKSIMAL</button>';
-    else h += '<button class="btn small skBuy" type="button" data-k="' + k + '"' + (pts < SKILL_COST[tier] ? ' disabled' : '') + '>Upgrade (' + SKILL_COST[tier] + ' poin)</button>';
+    else h += '<button class="btn small skBuy" type="button" data-k="' + k + '"' + (pts < SKILL_COST[tier] ? ' disabled' : '') + '>Tingkatkan (' + SKILL_COST[tier] + ' poin)</button>';
     h += '<div class="skNodes">';
     for (t = 1; t <= 6; t++) {
       var st = t <= tier ? 'done' : (t === tier + 1 ? 'next' : 'lock');
@@ -2000,9 +2001,9 @@ function renderSkills() {
     h += '</div></div>';
   });
   $('skillCols').innerHTML = h;
-  $('skillPts').textContent = 'Poin skill: ' + pts;
+  $('skillPts').textContent = 'Poin keahlian: ' + pts;
   var ab = activeBait(), L = totalLuck(), ch = rarityChances(L, curRod().power);
-  $('skillInfo').innerHTML = 'Luck total +' + L + ' (joran +' + curRod().luck + ', skill +' + skillVal('luck') + ', umpan +' + (ab ? ab.luck : 0) + ') | Power ' + curRod().power +
+  $('skillInfo').innerHTML = 'Hoki total +' + L + ' (joran +' + curRod().luck + ', keahlian +' + skillVal('luck') + ', umpan +' + (ab ? ab.luck : 0) + ') | Tenaga ' + curRod().power +
     ' | Mutasi ' + fmtPct(mutChance()) + ' | Jumbo ' + fmtPct(jumboChance()) + '<br>Peluang lempar penuh: ' +
     ch.map(function (e) { return e.p > 0 ? '<span style="color:' + RARITY[e.r].color + '">' + RARITY[e.r].label + ' ' + fmtPct(e.p * 100) + '</span>' : ''; }).filter(Boolean).join(' | ');
 }
@@ -2017,7 +2018,7 @@ function buySkill(k) {
 var invSel = null, shopSel = null, resetArm = 0;
 var NPC_SAY = {
   hi: 'Halo, nelayan! Mau jual hasil tangkapanmu? Aku bayar sesuai harga.',
-  thanks: function (n, c) { return 'Terima kasih! ' + n + ' ikan dibeli, kamu dapat ' + fmt(c) + ' Coins.'; },
+  thanks: function (n, c) { return 'Terima kasih! ' + n + ' ikan dibeli, kamu dapat ' + fmt(c) + ' Koin.'; },
   none: 'Kamu belum punya ikan. Pergilah memancing dulu, ya!'
 };
 var npcLine = NPC_SAY.hi;
@@ -2032,11 +2033,13 @@ var Modal = {
     $('panelProfile').hidden = name !== 'profile';
     $('panelSkill').hidden = name !== 'skill';
     $('panelHelp').hidden = name !== 'help';
+    $('panelBook').hidden = name !== 'book';
     Ctl.modal = true; Ctl.sprint = false; resetJoy();
-    if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Reset Data'; renderInventory(); }
+    if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Hapus Data'; renderInventory(); }
     if (name === 'shop') { npcLine = NPC_SAY.hi; shopTab = 'fish'; renderShop(); }
     if (name === 'profile') renderProfile();
     if (name === 'skill') renderSkills();
+    if (name === 'book') renderBook();
   },
   close: function () {
     if (!this.cur) return;
@@ -2060,9 +2063,42 @@ function fishDetailHTML(f, extra) {
     '<div class="stat"><span>Kisaran berat</span><b>' + fmtNum(f.kg[0]) + ' - ' + fmtKg(f.kg[1]) + '</b></div>' +
     '<div class="stat"><span>Rekor terberat</span><b>' + (rec ? fmtKg(rec) : '-') + '</b></div>' +
     '<div class="stat"><span>Jumlah dimiliki</span><b>' + n + '</b></div>' +
-    '<div class="stat"><span>Nilai di tas</span><b>' + fmt(speciesValue(f.id)) + ' Coins</b></div>' +
+    '<div class="stat"><span>Nilai di tas</span><b>' + fmt(speciesValue(f.id)) + ' Koin</b></div>' +
     '<div class="stat"><span>Total tertangkap</span><b>' + caught + '</b></div>' +
     '<p>' + f.desc + '</p>' + (extra || '');
+}
+
+
+/* ---------- Buku Ikan: semua ikan di pulau; yang belum didapat tampil sebagai siluet, tetap menunjukkan kelangkaan & tenaga minimal ---------- */
+var bookSel = null;
+function bookNeed(f) { return RARITY[f.rarity].minPower; }
+function renderBook() {
+  var list = $('bookList'), detail = $('bookDetail'), d = Save.data, rp = curRod().power;
+  var found = FISH.filter(function (f) { return d.caught[f.id] > 0; }).length;
+  if (!bookSel || !FISH_BY_ID[bookSel]) bookSel = FISH[0].id;
+  list.innerHTML = '';
+  FISH.forEach(function (f) {
+    var seen = (d.caught[f.id] || 0) > 0, ok = rp >= bookNeed(f);
+    var row = document.createElement('div');
+    row.className = 'row' + (bookSel === f.id ? ' sel' : '') + (seen ? '' : ' unknown');
+    row.style.setProperty('--rc', RARITY[f.rarity].color);
+    row.innerHTML = '<img class="ficon' + (seen ? '' : ' silh') + '" src="' + ICON[f.id] + '" alt="">' +
+      '<div class="fname"><b>' + (seen ? f.name : '???') + '</b><span>' + rarTag(f.rarity) + '</span></div>' +
+      '<div class="cnt' + (ok ? '' : ' bad') + '">Tenaga ' + bookNeed(f) + '<small>' + (ok ? 'cukup' : 'kurang') + '</small></div>';
+    row.addEventListener('click', function () { bookSel = f.id; renderBook(); });
+    list.appendChild(row);
+  });
+  var f = FISH_BY_ID[bookSel], seen = (d.caught[f.id] || 0) > 0, need = bookNeed(f), rec = d.record[f.id];
+  detail.innerHTML = '<img class="big' + (seen ? '' : ' silh') + '" src="' + ICON[f.id] + '" alt=""><h3>' + (seen ? f.name : '???') + '</h3>' +
+    '<div class="tag">' + rarTag(f.rarity) + '</div>' +
+    '<div class="stat"><span>Tenaga joran minimal</span><b style="color:' + (rp >= need ? '#7dff9a' : '#ff7b7b') + '">' + need + '</b></div>' +
+    '<div class="stat"><span>Joranmu sekarang</span><b>Tenaga ' + rp + (rp >= need ? ' (cukup)' : ' (belum cukup)') + '</b></div>' +
+    '<div class="stat"><span>Kisaran berat</span><b>' + (seen ? fmtNum(f.kg[0]) + ' - ' + fmtKg(f.kg[1]) : '???') + '</b></div>' +
+    '<div class="stat"><span>Harga dasar</span><b>' + (seen ? fmt(f.price) + ' Koin' : '???') + '</b></div>' +
+    '<div class="stat"><span>Rekor terberat</span><b>' + (seen && rec ? fmtKg(rec) : '-') + '</b></div>' +
+    '<div class="stat"><span>Total tertangkap</span><b>' + (d.caught[f.id] || 0) + '</b></div>' +
+    '<p>' + (seen ? f.desc : 'Ikan ini belum pernah kamu tangkap. Pakai joran dengan tenaga minimal ' + need + ' lalu coba terus memancing!') + '</p>';
+  $('bookSummary').textContent = 'Ditemukan: ' + found + '/' + FISH.length;
 }
 
 var invTab = 'bag', slotSel = null, moveFrom = null;
@@ -2091,10 +2127,10 @@ function slotDetailHTML(i) {
   if (!id) return '<div class="empty">Kotak ' + (i + 1) + ' kosong.<br>' + (moveFrom !== null ? 'Ketuk untuk memindahkan ikan ke sini.' : 'Ikan hasil tangkapan masuk ke kotak kosong pertama.') + '</div>';
   var f = FISH_BY_ID[id];
   return '<img class="big" src="' + ICON[id] + '" alt=""><h3>' + mutTag(Save.data.muts[i]) + f.name + '</h3><div class="tag">' + rarTag(f.rarity) + '</div>' +
-    '<div class="stat"><span>Kotak</span><b>' + (i + 1) + (i < NHOT ? ' (hotbar ' + (i + 2) + ')' : '') + '</b></div>' +
+    '<div class="stat"><span>Kotak</span><b>' + (i + 1) + (i < NHOT ? ' (bilah cepat ' + (i + 2) + ')' : '') + '</b></div>' +
     '<div class="stat"><span>Berat</span><b>' + fmtKg(Save.data.kgs[i]) + '</b></div>' +
     (Save.data.muts[i] ? '<div class="stat"><span>Mutasi</span><b>' + mutTag(Save.data.muts[i]) + 'x' + mutMult(Save.data.muts[i]).toString().replace('.', ',') + ' harga</b></div>' : '') +
-    '<div class="stat"><span>Harga jual</span><b>' + fmt(slotPrice(i)) + ' Coins</b></div>' +
+    '<div class="stat"><span>Harga jual</span><b>' + fmt(slotPrice(i)) + ' Koin</b></div>' +
     '<div class="stat"><span>Rekor jenis ini</span><b>' + fmtKg(Save.data.record[id] || Save.data.kgs[i]) + '</b></div>' +
     '<div class="stat"><span>Total tertangkap</span><b>' + (Save.data.caught[id] || 0) + '</b></div>' +
     '<p>' + f.desc + '</p><div class="btns">' +
@@ -2118,7 +2154,7 @@ function renderBag() {
     });
     grid.appendChild(d);
   });
-  $('slotHint').textContent = moveFrom !== null ? 'Pilih kotak tujuan untuk memindahkan ikan' : 'Ketuk kotak untuk melihat ikan  |  Kotak 1-6 muncul di hotbar';
+  $('slotHint').textContent = moveFrom !== null ? 'Pilih kotak tujuan untuk memindahkan ikan' : 'Ketuk kotak untuk melihat ikan  |  Kotak 1-6 muncul di bilah cepat';
   var det = $('slotDetail');
   if (slotSel === null) { for (var q = 0; q < NSLOT; q++) if (Save.data.slots[q]) { slotSel = q; break; } }
   det.innerHTML = slotSel === null ? '<div class="empty">Tas masih kosong.<br>Tangkap ikan untuk mengisinya!</div>' : slotDetailHTML(slotSel);
@@ -2129,7 +2165,7 @@ function renderBag() {
 }
 function updateInvSummary() {
   var found = FISH.filter(function (f) { return Save.data.caught[f.id] > 0; }).length;
-  $('invSummary').textContent = 'Tas: ' + totalFish() + '/' + NSLOT + '  |  Nilai: ' + fmt(totalValue()) + ' Coins  |  Koleksi: ' + found + '/' + FISH.length;
+  $('invSummary').textContent = 'Tas: ' + totalFish() + '/' + NSLOT + '  |  Nilai: ' + fmt(totalValue()) + ' Koin  |  Koleksi: ' + found + '/' + FISH.length;
 }
 function renderInventory() {
   $('bagView').hidden = invTab !== 'bag'; $('colView').hidden = invTab !== 'col';
@@ -2176,10 +2212,10 @@ function renderProfile() {
   var d = Save.data, li = levelInfo(d.xp), i;
   $('pfName').value = d.name;
   $('pfTitle').textContent = rankTitle(li.level);
-  $('pfLevel').textContent = 'Level ' + li.level;
-  $('pfXpText').textContent = fmt(li.cur) + ' / ' + fmt(li.need) + ' XP';
+  $('pfLevel').textContent = 'Tingkat ' + li.level;
+  $('pfXpText').textContent = fmt(li.cur) + ' / ' + fmt(li.need) + ' Pengalaman';
   $('pfBar').firstElementChild.style.width = Math.round(li.frac * 100) + '%';
-  $('pfNext').textContent = 'Naik ke Level ' + (li.level + 1) + ' = hadiah ' + fmt(levelReward(li.level + 1)) + ' Coins';
+  $('pfNext').textContent = 'Naik ke Tingkat ' + (li.level + 1) + ' = hadiah ' + fmt(levelReward(li.level + 1)) + ' Koin';
   var total = 0, found = 0, best = null, heavy = null, perRar = {};
   RARITY_ORDER.forEach(function (r) { perRar[r] = 0; });
   FISH.forEach(function (f) {
@@ -2194,8 +2230,8 @@ function renderProfile() {
     '<div class="pfStat"><span>Koleksi ikan</span><b>' + found + ' / ' + FISH.length + '</b></div>' +
     '<div class="pfStat"><span>Tangkapan terlangka</span><b>' + (best ? '<span class="r-' + best.rarity + '">' + best.name + '</span>' : '-') + '</b></div>' +
     '<div class="pfStat"><span>Ikan terberat</span><b>' + (heavy ? fmtKg(d.record[heavy.id]) + ' (' + heavy.name + ')' : '-') + '</b></div>' +
-    '<div class="pfStat"><span>Coins</span><b>' + fmt(d.coins) + '</b></div>' +
-    '<div class="pfStat"><span>Total XP</span><b>' + fmt(d.xp) + '</b></div>' +
+    '<div class="pfStat"><span>Koin</span><b>' + fmt(d.coins) + '</b></div>' +
+    '<div class="pfStat"><span>Total Pengalaman</span><b>' + fmt(d.xp) + '</b></div>' +
     '<div class="pfRar">';
   for (i = 0; i < RARITY_ORDER.length; i++) {
     var rk = RARITY_ORDER[i];
@@ -2246,7 +2282,7 @@ function renderShop() {
     var row = document.createElement('div');
     row.className = 'row' + (shopSel === f.id ? ' sel' : '');
     row.style.setProperty('--rc', RARITY[f.rarity].color);
-    row.innerHTML = fishRowHTML(f, 'x' + Save.data.inv[f.id] + '<small>' + fmt(speciesValue(f.id)) + ' Coins</small>');
+    row.innerHTML = fishRowHTML(f, 'x' + Save.data.inv[f.id] + '<small>' + fmt(speciesValue(f.id)) + ' Koin</small>');
     row.addEventListener('click', function () { shopSel = f.id; renderShop(); });
     list.appendChild(row);
   });
@@ -2261,7 +2297,7 @@ function renderShop() {
   } else {
     detail.innerHTML = say + '<div class="empty">Tidak ada ikan untuk dijual.</div>';
   }
-  $('shopSummary').textContent = 'Coins kamu: ' + fmt(Save.data.coins) + '  |  Nilai semua ikan: ' + fmt(totalValue());
+  $('shopSummary').textContent = 'Koin kamu: ' + fmt(Save.data.coins) + '  |  Nilai semua ikan: ' + fmt(totalValue());
   $('btnSellAll').disabled = !owned.length;
   $('btnSellAll').textContent = 'Jual Semua Ikan' + (owned.length ? ' (+' + fmt(totalValue()) + ')' : '');
 }
@@ -2288,10 +2324,11 @@ function initButtons() {
   pn.addEventListener('keydown', function (e) { if (e.key === 'Enter') pn.blur(); });
   pn.addEventListener('focus', function () { try { pn.select(); } catch (err) { /* abaikan */ } });
   $('tabShopFish').addEventListener('click', function () { shopTab = 'fish'; renderShop(); });
-  $('tabShopRod').addEventListener('click', function () { shopTab = 'rod'; npcLine = 'Joran bagus bikin tangkapan lebih besar. Butuh level dan Coins yang cukup, ya!'; renderShop(); });
+  $('tabShopRod').addEventListener('click', function () { shopTab = 'rod'; npcLine = 'Joran bagus bikin tangkapan lebih besar. Butuh tingkat dan Koin yang cukup, ya!'; renderShop(); });
   $('tabShopBait').addEventListener('click', function () { shopTab = 'bait'; npcLine = 'Umpan dibeli per ' + BAIT_PACK + ' biji dan terpakai 1 per lemparan. Pilih yang cocok dengan tujuanmu!'; renderShop(); });
   press('btnSkill', function () { Modal.toggle('skill'); });
   press('btnHelp', function () { Modal.toggle('help'); });
+  press('btnBook', function () { Modal.toggle('book'); });
   $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k')); });
   Array.prototype.forEach.call(document.querySelectorAll('button'), function (b) { b.addEventListener('mousedown', function (e) { e.preventDefault(); }); });   // tombol tidak menyimpan fokus => Spasi tidak menekan ulang tombol
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
@@ -2315,10 +2352,10 @@ function initButtons() {
     var b = $('btnReset');
     if (!resetArm) {
       resetArm = 1; b.textContent = 'Yakin? Tap lagi';
-      setTimeout(function () { resetArm = 0; b.textContent = 'Reset Data'; }, 3000);
+      setTimeout(function () { resetArm = 0; b.textContent = 'Hapus Data'; }, 3000);
       return;
     }
-    Save.reset(); resetArm = 0; b.textContent = 'Reset Data';
+    Save.reset(); resetArm = 0; b.textContent = 'Hapus Data';
     invSel = null; shopSel = null; slotSel = null; moveFrom = null; Equip.sel = 0;
     UI.setCoins(false); UI.setBag(); UI.setLevel(false); UI.setZoomBtns(); Hotbar.render();
     if (scene) scene.resetPlayer();
@@ -2548,7 +2585,7 @@ function createSceneClass() {
 
       UI.setCoins(false); UI.setBag();
       $('loading').classList.add('gone');
-      if (IS_PC) UI.hint('PC: WASD / panah = jalan | Shift = lari | TAHAN Spasi lalu lepas = lempar | E = toko | K = skill | H = semua kontrol', 11000); else
+      if (IS_PC) UI.hint('PC: WASD / panah = jalan | Shift = lari | TAHAN Spasi lalu lepas = lempar | E = toko | K = keahlian | N = buku ikan | H = semua kontrol', 11000); else
       UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR: bar naik lalu turun lagi. Lepas tepat saat bar penuh untuk lemparan terjauh!', 9000);
     }
 
@@ -2794,11 +2831,11 @@ function createSceneClass() {
       UI.toast(
         '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : (isJumbo ? 'JUMBO! ' : ''))) + mutTag(mut) + def.name +
         '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - ' + fmtKg(kg) + '</small>' +
-        '<small>Jual ' + fmt(price) + ' Coins - +' + gainXp + ' XP</small></div>',
+        '<small>Jual ' + fmt(price) + ' Koin - +' + gainXp + ' Pengalaman</small></div>',
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
       if (lvUp.up) {                                   // pesan naik level muncul setelah pesan ikan selesai
         setTimeout(function () {
-          UI.toast('<div>NAIK LEVEL! Level ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Coins</small><small>+' + lvUp.gained + ' Poin Skill (tekan K)</small></div>', '#ffd54a', true, 3400);
+          UI.toast('<div>NAIK TINGKAT! Tingkat ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Koin</small><small>+' + lvUp.gained + ' Poin Keahlian (tekan K)</small></div>', '#ffd54a', true, 3400);
         }, def.rarity === 'legendary' ? 4100 : 2900);
       }
     }

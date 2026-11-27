@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06222c">
 <title>Tropical Fishing Adventure</title>
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
 
@@ -21,9 +21,10 @@
       <span class="lvTxt"><span id="lvName">Nelayan</span><span id="lvBar"><i></i></span></span>
     </button>
 
-    <button id="btnBag" class="hudbtn" type="button">INVENTORY <b id="bagCount">0</b></button>
-    <button id="btnSkill" class="hudbtn" type="button">SKILL <b id="skillCount">0</b><small class="kb">K</small></button>
+    <button id="btnBag" class="hudbtn" type="button">TAS <b id="bagCount">0</b></button>
+    <button id="btnSkill" class="hudbtn" type="button">KEAHLIAN <b id="skillCount">0</b><small class="kb">K</small></button>
     <button id="btnHelp" class="hudbtn" type="button">KONTROL <small class="kb">H</small></button>
+    <button id="btnBook" class="hudbtn" type="button">BUKU <small class="kb">N</small></button>
     <button id="btnFull" class="hudbtn sq" type="button" aria-label="Layar penuh">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
@@ -69,7 +70,7 @@
       </div>
       <div class="pf">
         <span id="invSummary"></span>
-        <button id="btnReset" class="btn small danger" type="button">Reset Data</button>
+        <button id="btnReset" class="btn small danger" type="button">Hapus Data</button>
       </div>
     </div>
 
@@ -103,14 +104,24 @@
           <div id="pfStats"></div>
         </div>
       </div>
-      <div class="pf"><span>Tangkap ikan untuk mendapat XP. Makin langka dan makin berat, makin besar XP-nya!</span></div>
+      <div class="pf"><span>Tangkap ikan untuk mendapat pengalaman. Makin langka dan makin berat, makin besar pengalamannya!</span></div>
     </div>
 
     <!-- SKILL -->
     <div class="panel" id="panelSkill" hidden>
-      <div class="ph"><h2>Skill Nelayan</h2><span id="skillPts" class="skPts"></span><button class="x" type="button" data-close>X</button></div>
+      <div class="ph"><h2>Keahlian Nelayan</h2><span id="skillPts" class="skPts"></span><button class="x" type="button" data-close>X</button></div>
       <div class="pb"><div id="skillCols"></div></div>
-      <div class="pf"><span id="skillInfo"></span><span class="skTip">1 poin tiap naik level</span></div>
+      <div class="pf"><span id="skillInfo"></span><span class="skTip">1 poin tiap naik tingkat</span></div>
+    </div>
+
+    <!-- BUKU IKAN -->
+    <div class="panel" id="panelBook" hidden>
+      <div class="ph"><h2>Buku Ikan Pulau</h2><button class="x" type="button" data-close>X</button></div>
+      <div class="pb">
+        <div id="bookList" class="list"></div>
+        <div id="bookDetail" class="detail"></div>
+      </div>
+      <div class="pf"><span id="bookSummary"></span><span class="skTip">Ikan yang belum didapat tampil sebagai siluet</span></div>
     </div>
 
     <!-- KONTROL PC -->
@@ -125,9 +136,10 @@
         <div><kbd>2</kbd>&ndash;<kbd>7</kbd><span>Pegang ikan di hotbar</span></div>
         <div><kbd>8</kbd><span>Ganti umpan (urut: umpan 1, 2, ... lalu tanpa umpan)</span></div>
         <div><kbd>I</kbd> / <kbd>B</kbd><span>Tas ikan</span></div>
-        <div><kbd>K</kbd><span>Skill (poin dari naik level)</span></div>
-        <div><kbd>P</kbd><span>Profil &amp; level</span></div>
-        <div><kbd>+</kbd> <kbd>&minus;</kbd> / roda mouse<span>Zoom</span></div>
+        <div><kbd>K</kbd><span>Keahlian (poin dari naik tingkat)</span></div>
+        <div><kbd>N</kbd><span>Buku ikan (daftar semua ikan di pulau)</span></div>
+        <div><kbd>P</kbd><span>Profil &amp; tingkat</span></div>
+        <div><kbd>+</kbd> <kbd>&minus;</kbd> / roda mouse<span>Perbesar / perkecil</span></div>
         <div><kbd>H</kbd> / <kbd>F1</kbd><span>Buka / tutup bantuan ini</span></div>
         <div><kbd>Esc</kbd><span>Tutup jendela</span></div>
       </div></div>
@@ -145,6 +157,6 @@
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
 <script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
-<script src="game.js?v=19"></script>
+<script src="game.js?v=21"></script>
 </body>
 </html>
