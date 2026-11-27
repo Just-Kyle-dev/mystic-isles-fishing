@@ -1270,24 +1270,59 @@ var DIRVIEW = [
   { v: 'B1', flip: false }    // 7 NE
 ];
 
-/* ---------- joran kayu pemula (sprite horizontal, pangkal di kiri) ---------- */
-function makeRod() {
-  var S = 2, LW = 26, LH = 9, cv = mkCanvas(LW * S, LH * S), c = cv[0], g = cv[1], x;
-  function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a * S, b * S, w * S, h * S); }
-  // gagang gabus + cincin
-  R(0, 3, 6, 3, '#d9b98a'); R(0, 3, 6, 1, '#f0d9b0'); R(0, 5, 6, 1, '#a98a5e'); R(2, 3, 1, 3, '#8a6a40'); R(4, 3, 1, 3, '#8a6a40');
-  R(6, 3, 1, 3, '#7a5a2e');                                                                 // pengikat
-  // batang kayu meruncing: tebal 3 -> 1, serat & highlight
-  for (x = 7; x < 26; x++) {
-    var t = (x - 7) / 18, th = t < 0.45 ? 3 : (t < 0.8 ? 2 : 1), y0 = th === 3 ? 3 : (th === 2 ? 3 : 4);
-    R(x, y0, 1, th, '#9a6232'); R(x, y0, 1, 1, '#d79a5c'); if (th > 1) R(x, y0 + th - 1, 1, 1, '#6b4423');
-    if (x % 5 === 2 && th > 1) R(x, y0 + 1, 1, 1, '#7a4f28');
+/* ---------- joran kayu pemula (sprite horizontal; titik pegang = tengah gagang) ---------- */
+function makeRod() {                                   // resolusi 1 px (lebih halus) agar batang terlihat ramping
+  var LW = 74, LH = 27, cv = mkCanvas(LW, LH), c = cv[0], g = cv[1], x, y, dx, dy, k;
+  function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a, b, w, h); }
+  // senar tipis menyusuri ring pemandu (di belakang batang)
+  function ln(x0, y0, x1, y1) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), k; for (k = 0; k <= n; k++) R(Math.round(x0 + (x1 - x0) * k / n), Math.round(y0 + (y1 - y0) * k / n), 1, 1, '#f1eddb'); }
+  ln(15, 14, 36, 12); ln(36, 12, 47, 12); ln(47, 12, 61, 10); ln(61, 10, 70, 9); ln(70, 9, 73, 7);
+  // pantat gagang & gagang berlilit kulit
+  R(0, 7, 4, 3, '#3a3026'); R(0, 6, 4, 1, '#5e5142'); R(1, 10, 3, 1, '#1f1812'); R(0, 7, 1, 3, '#2a2119');
+  for (x = 4; x <= 25; x++) {
+    var wrp = ((x + (x >> 3)) % 3);
+    R(x, 6, 1, 5, wrp === 0 ? '#6e4020' : (wrp === 1 ? '#8c5a2c' : '#a06a35'));
+    R(x, 6, 1, 1, wrp === 0 ? '#9a6b3a' : '#bf8d57'); R(x, 10, 1, 1, '#47280f');
+    if (wrp === 0) { R(x, 8, 1, 1, '#5a3418'); }
   }
-  [11, 16, 21].forEach(function (gx, n) { R(gx, 2, 1, 1, n % 2 ? '#cfcfd6' : '#e6e6ea'); });
-  R(25, 3, 1, 1, '#e6e6ea');
-  // reel sederhana (kayu + kuningan) di bawah gagang
-  R(2, 6, 4, 3, '#8a5a2b'); R(2, 6, 4, 1, '#c18a50'); R(3, 7, 2, 1, '#e0c070'); R(6, 7, 1, 2, '#d4bf72'); R(7, 9, 1, 1, '#d4bf72');
-  return { canvas: c, ox: 1.2 / LW, oy: 4.4 / LH };
+  R(26, 6, 3, 5, '#d9b45a'); R(26, 6, 3, 1, '#fff0b0'); R(26, 10, 3, 1, '#98721f'); R(27, 7, 1, 3, '#c39a3e');       // cincin kuningan
+  // batang bawah kayu merah-cokelat
+  for (x = 29; x <= 52; x++) {
+    var th = x < 42 ? 4 : 3;
+    R(x, 7, 1, th, '#92462d'); R(x, 7, 1, 1, '#d77a5c'); R(x, 6 + th, 1, 1, '#561f13');
+    if ((x * 5) % 11 === 2) R(x, 8, 1, 1, '#7a3624'); if ((x * 3) % 13 === 5) R(x, 9, 1, 1, '#6c2b1b');
+  }
+  R(53, 7, 3, 3, '#d9b45a'); R(53, 7, 3, 1, '#fff0b0'); R(53, 9, 3, 1, '#98721f');                                     // sambungan
+  for (x = 56; x <= 70; x++) {
+    var t2 = x < 64 ? 2 : 1;
+    R(x, 7, 1, t2, '#92462d'); R(x, 7, 1, 1, '#d77a5c'); if (t2 > 1) R(x, 8, 1, 1, '#561f13');
+  }
+  R(71, 6, 2, 3, '#d9b45a'); R(71, 6, 2, 1, '#fff0b0'); R(73, 7, 1, 1, '#d9b45a');                                       // ujung
+  // ring pemandu kawat perak
+  [[36, 11], [47, 11], [61, 9], [70, 8]].forEach(function (r) {
+    var rx = r[0], ry = r[1];
+    R(rx - 1, ry, 1, 3, '#e4e4ec'); R(rx + 1, ry, 1, 3, '#e4e4ec'); R(rx - 1, ry + 2, 3, 1, '#9a9aa8'); R(rx, ry, 1, 1, '#c8c8d2');
+  });
+  // reel perunggu berlubang (di bawah gagang), engkol, kaki
+  R(12, 11, 5, 2, '#c9a35a'); R(12, 11, 5, 1, '#f0d890');
+  for (dy = -6; dy <= 6; dy++) for (dx = -6; dx <= 6; dx++) {
+    var d2 = dx * dx + dy * dy;
+    if (d2 > 33) continue;
+    var col = d2 > 24 ? '#e8c47a' : (d2 > 14 ? '#b9833a' : '#a7742f');
+    if (dx + dy < -3 && d2 > 8) col = '#f6dc9c'; else if (dx + dy > 4 && d2 > 8) col = '#7d4f1d';
+    R(14 + dx, 19 + dy, 1, 1, col);
+  }
+  for (k = 0; k < 6; k++) { var an = k * Math.PI / 3 + 0.3; R(Math.round(14 + Math.cos(an) * 3.6), Math.round(19 + Math.sin(an) * 3.6), 2, 2, '#2f200e'); }
+  R(13, 18, 3, 3, '#6a4720'); R(14, 19, 1, 1, '#fff0b0');
+  R(20, 18, 5, 2, '#d4bf72'); R(20, 18, 5, 1, '#f6e39a'); R(24, 19, 2, 3, '#8a6420'); R(24, 19, 1, 1, '#d4bf72');
+  R(9, 23, 3, 1, '#c9a35a'); R(8, 24, 2, 1, '#8a6420'); R(7, 22, 2, 2, '#c9a35a');
+  return { canvas: c, ox: 14 / LW, oy: 8.5 / LH };
+}
+function makeFist() {                                   // kepalan tangan kecil (1 px) di atas gagang
+  var cv = mkCanvas(6, 5), c = cv[0], g = cv[1];
+  function R(a, b, w, h, col) { g.fillStyle = col; g.fillRect(a, b, w, h); }
+  R(0, 0, 6, 4, '#f2c28b'); R(0, 0, 5, 1, '#ffe2bd'); R(0, 1, 1, 2, '#ffe2bd'); R(5, 3, 1, 1, '#d9a06c'); R(1, 3, 4, 1, '#d9a06c'); R(2, 1, 1, 2, '#d9a06c'); R(4, 1, 1, 2, '#d9a06c');
+  return { canvas: c, ox: 0.5, oy: 0.5 };
 }
 
 /* ----- objek dunia ----- */
@@ -1324,7 +1359,7 @@ function makeFishCanvas(f) {
 var ICON = {}, ICON_ROD = '';
 function buildIcons() {
   FISH.forEach(function (f) { ICON[f.id] = makeFishCanvas(f).toDataURL(); });
-  ICON_ROD = outlined(makeRod(), '#2a1408').canvas.toDataURL();
+  ICON_ROD = outlined(makeRod(), '#2a1408', 1).canvas.toDataURL();
 }
 
 /* =====================================================================
@@ -1793,7 +1828,8 @@ function createSceneClass() {
       this.textures.addCanvas('cloud', makeCloud());
       this.textures.addCanvas('deep', makeDeep());
       this.textures.get('deep').setFilter(Phaser.Textures.FilterMode.LINEAR);
-      var rd = outlined(makeRod(), '#2a1408'); this.textures.addCanvas('rod', rd.canvas); this.rodOrg = [rd.ox, rd.oy];
+      var rd = outlined(makeRod(), '#2a1408', 1); this.textures.addCanvas('rod', rd.canvas); this.rodOrg = [rd.ox, rd.oy];
+      this.textures.addCanvas('fist', outlined(makeFist(), '#5a3318', 1).canvas);
       this.textures.addCanvas('bobber', makeBobber());
       var isl = this.isl = makeIsland(M);
       this.textures.addCanvas('ground', isl.ground);
@@ -1930,6 +1966,7 @@ function createSceneClass() {
       this.rodG = this.add.graphics();
       this.rod = this.add.image(0, 0, 'rod').setOrigin(this.rodOrg[0], this.rodOrg[1]).setVisible(false);
       this.held = this.add.image(0, 0, 'fish_' + FISH[0].id).setVisible(false);
+      this.fist = this.add.image(0, 0, 'fist').setVisible(false);
       this.bobber = this.add.image(0, 0, 'bobber').setOrigin(0.5, 0.75).setVisible(false);
       this.ring = this.add.ellipse(0, 0, 40, 18).setStrokeStyle(3, 0xffffff, 0.9).setVisible(false);
       this.bang = this.add.text(0, 0, '!', { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '46px', fontStyle: 'bold', color: '#ffeb3b', stroke: '#b71c1c', strokeThickness: 7 })
@@ -2025,40 +2062,46 @@ function createSceneClass() {
       Modal.open('shop');
     }
     /* Phaser: flipX memantulkan gambar terhadap TENGAH frame (titik asal tidak ikut berpindah).
-       Agar pangkal joran tetap di tangan saat menghadap kiri, titik asal dicerminkan juga. */
-    placeRod(hand, ang, depth) {
-      var left = Math.cos(ang) < 0;
+       Agar titik pegang tetap di tangan saat menghadap kiri, titik asal dicerminkan juga. */
+    placeRod(hand, ang, back) {
+      var p = this.foot, left = Math.cos(ang) < 0;
       this.rod.setOrigin(left ? 1 - this.rodOrg[0] : this.rodOrg[0], this.rodOrg[1]).setFlipX(left)
-        .setRotation(left ? ang - Math.PI : ang).setPosition(hand.x, hand.y).setDepth(depth).setVisible(true);
+        .setRotation(left ? ang - Math.PI : ang).setPosition(hand.x, hand.y).setDepth(back ? p.y + 0.2 : p.y + 2).setVisible(true);
+      this.fist.setVisible(!back).setPosition(hand.x, hand.y).setDepth(p.y + 2.3);   // kepalan tangan menggenggam gagang
     }
-    handPos() {
-      var p = this.foot, h = HERO_HAND[this.curFrame], fl = DIRVIEW[this.dirIdx].flip ? -1 : 1;
-      if (!h) return null;
-      return { x: p.x + (h[0] * 2 - HC_W) * fl, y: p.y + (h[1] * 2 - HC_FOOT * 2), ang: h[2], fl: fl };
+    hideRod() { this.rod.setVisible(false); this.fist.setVisible(false); }
+    /* titik pegang joran. Menghadap belakang: joran dipegang di DEPAN karakter (menjauhi kamera),
+       jadi pangkalnya tersembunyi di balik badan dan hanya batangnya yang menjulur ke atas. */
+    rodFrame() {
+      var p = this.foot, dv = DIRVIEW[this.dirIdx], fl = dv.flip ? -1 : 1, back = dv.v[0] === 'B';
+      var h = HERO_HAND[this.curFrame] || [10, 16, -0.9];
+      var hand = back ? { x: p.x + fl * 3, y: p.y - 28 } : { x: p.x + (h[0] * 2 - HC_W) * fl, y: p.y + (h[1] * 2 - HC_FOOT * 2) };
+      return { hand: hand, fl: fl, back: back, ang: (h[2] === null || h[2] === undefined) ? null : h[2] };
     }
     updateHeld(time) {
       var f = this.fish, p = this.foot, dv = DIRVIEW[this.dirIdx], fl = dv.flip ? -1 : 1, back = dv.v[0] === 'B';
       var fishing = f.state !== 'idle' && f.state !== 'cooldown', catching = f.state === 'cooldown' && f.caught;
       if (catching) {                                     // ikan diangkat tinggi dengan dua tangan
-        this.rod.setVisible(false);
+        this.hideRod();
         if (f.caughtId) this.held.setTexture('fish_' + f.caughtId).setVisible(true).setScale(1.5).setFlipX(fl < 0)
           .setPosition(p.x + fl * 2, p.y - 63 - Math.abs(Math.sin(f.t * 9)) * 3).setAngle(-18 * fl).setDepth(p.y + 3);
         return;
       }
       if (fishing) { this.held.setVisible(false); return; }
-      var hp = this.handPos();
-      if (!hp) return;
+      var rf = this.rodFrame();
       if (Equip.sel === 0) {                              // joran dibawa miring ke depan-atas
         this.held.setVisible(false);
-        var a = (hp.ang === null || hp.ang === undefined) ? -1.12 : hp.ang;
-        if (hp.fl < 0) a = Math.PI - a;
-        this.placeRod(hp, a, p.y + 2);
+        var a = rf.ang === null ? -1.12 : rf.ang;
+        if (rf.fl < 0) a = Math.PI - a;
+        this.placeRod(rf.hand, a, rf.back);
       } else {
-        this.rod.setVisible(false);
+        this.hideRod();
         var id = heldFishId();
         if (!id) { this.held.setVisible(false); return; }
+        var h = HERO_HAND[this.curFrame]; if (!h) return;
+        var hx = p.x + (h[0] * 2 - HC_W) * fl, hy = p.y + (h[1] * 2 - HC_FOOT * 2);
         this.held.setTexture('fish_' + id).setVisible(true).setScale(1.25).setFlipX(fl < 0)
-          .setPosition(hp.x + fl * 5, hp.y - 6).setAngle(-24 * fl).setDepth(back ? p.y + 0.2 : p.y + 3);
+          .setPosition(hx + fl * 5, hy - 6).setAngle(-24 * fl).setDepth(back ? p.y + 0.2 : p.y + 3);
       }
     }
     rodGeometry() {
@@ -2066,14 +2109,13 @@ function createSceneClass() {
       var tx = f.target ? (f.target.gx - f.target.gy) * 32 + W / 2 : p.x + 20;
       var ty = f.target ? (f.target.gx + f.target.gy) * 16 : p.y;
       var sgn = (tx - p.x) >= 0 ? 1 : -1;
-      var h = HERO_HAND[this.curFrame] || [10, 16, -0.9], fl = DIRVIEW[this.dirIdx].flip ? -1 : 1;
-      var hand = { x: p.x + (h[0] * 2 - HC_W) * fl, y: p.y + (h[1] * 2 - HC_FOOT * 2) };
-      var ang = (h[2] === null || h[2] === undefined) ? -0.9 : h[2];
+      var rf = this.rodFrame(), hand = rf.hand;
+      var ang = rf.ang === null ? -0.9 : rf.ang;
       if (f.state === 'bite') ang += Math.sin(this.time.now * 0.06) * 0.07;
       else if (f.state === 'reel') ang += (f.kick || 0) * 0.14;
       if (sgn < 0) ang = Math.PI - ang;
-      var L = 49;
-      return { hand: hand, tip: { x: hand.x + Math.cos(ang) * L, y: hand.y + Math.sin(ang) * L }, ang: ang, tx: tx, ty: ty };
+      var L = 59;
+      return { hand: hand, tip: { x: hand.x + Math.cos(ang) * L, y: hand.y + Math.sin(ang) * L }, ang: ang, tx: tx, ty: ty, back: rf.back };
     }
     startCast() {
       var tgt = this.findFishingTarget();
@@ -2105,7 +2147,7 @@ function createSceneClass() {
     }
     hideFishing() {
       this.bobber.setVisible(false); this.ring.setVisible(false); this.bang.setVisible(false);
-      this.rodG.clear(); this.rod.setVisible(false); this.held.setVisible(false);
+      this.rodG.clear(); this.hideRod(); this.held.setVisible(false);
     }
     cancelFish(msg) {
       var f = this.fish;
@@ -2278,7 +2320,7 @@ function createSceneClass() {
 
       // joran + senar
       var rg = this.rodG; rg.clear().setDepth(this.foot.y + 2);
-      this.placeRod(g.hand, g.ang, this.foot.y + 2);
+      this.placeRod(g.hand, g.ang, g.back);
       rg.lineStyle(0.7, (st === 'reel' && f.prog < 0.3) ? 0xff5252 : 0xffffff, 0.85); rg.beginPath(); rg.moveTo(g.tip.x, g.tip.y);
       for (var k = 1; k <= 14; k++) {
         var t = k / 14;

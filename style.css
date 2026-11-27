@@ -263,7 +263,7 @@ html, body {
   transition: transform .12s, border-color .12s;
 }
 .hb img { position: absolute; left: 50%; top: 46%; width: 52px; height: auto; transform: translate(-50%, -50%); image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); pointer-events: none; }
-.hb.rod img { width: 58px; transform: translate(-50%, -50%) rotate(-28deg); }
+.hb.rod img { width: 62px; transform: translate(-50%, -50%) rotate(-26deg); }
 .hb .hk { position: absolute; left: 6px; top: 2px; font: 800 14px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; text-shadow: 0 1px 0 #000; pointer-events: none; }
 .hb .hr { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 5px; border-radius: 3px; background: var(--rc, transparent); opacity: .95; pointer-events: none; }
 .hb.empty { opacity: .5; border-color: #5a4626; border-style: dashed; }
