@@ -1434,7 +1434,8 @@ var UI = {
     if (!on) return;
     b.firstElementChild.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
     var bad = !ok; if (this.cache.castBad !== bad) { this.cache.castBad = bad; b.classList.toggle('bad', bad); }
-    var tx = ok ? 'LEPAS UNTUK MELEMPAR  ' + Math.round(CAST_MIN + (CAST_MAX - CAST_MIN) * frac) / 10 + ' m' : 'ARAHKAN KE LAUT';
+    var pk = frac >= 0.94; if (this.cache.castPk !== pk) { this.cache.castPk = pk; b.classList.toggle('peak', pk); }
+    var tx = !ok ? 'ARAHKAN KE LAUT' : (pk ? 'PAS! LEPAS SEKARANG!' : 'LEPAS UNTUK MELEMPAR  ' + Math.round(CAST_MIN + (CAST_MAX - CAST_MIN) * frac) / 10 + ' m');
     if (this.cache.castTx !== tx) { this.cache.castTx = tx; b.lastElementChild.textContent = tx; }
   },
   setReel: function (on, frac) {
@@ -2002,7 +2003,7 @@ function createSceneClass() {
 
       UI.setCoins(false); UI.setBag();
       $('loading').classList.add('gone');
-      UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR lalu lepas: makin lama ditahan, makin jauh umpan terlempar. Jual ikan ke Pak Marlin!', 9000);
+      UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR: bar naik lalu turun lagi. Lepas tepat saat bar penuh untuk lemparan terjauh!', 9000);
     }
 
     /* ---------- koordinat & tabrakan ---------- */
@@ -2129,7 +2130,7 @@ function createSceneClass() {
       if (Equip.sel !== 0) { Equip.sel = 0; Hotbar.render(); }
       var f = this.fish;
       this.autoAim();
-      f.state = 'charge'; f.t = 0; f.power = 0; f.castPower = 0; f.caught = false; f.launch = null; f.target = null; f.aimOK = null;
+      f.state = 'charge'; f.t = 0; f.power = 0; f.peak = 0; f.castPower = 0; f.caught = false; f.launch = null; f.target = null; f.aimOK = null;
       this.curFrame = '';
       this.bobber.setVisible(false);
     }
@@ -2281,7 +2282,7 @@ function createSceneClass() {
       this.updateHeld(time);
       // kamera menjauh sedikit mengikuti jarak lemparan supaya umpan tetap terlihat
       var zt = CAM_ZOOM;
-      if (st0 === 'charge') zt = CAM_ZOOM - 1.15 * f.power;
+      if (st0 === 'charge') zt = CAM_ZOOM - 1.15 * (f.peak || 0);      // zoom hanya menjauh saat menahan (tidak bolak-balik)
       else if (st0 === 'casting' || st0 === 'waiting' || st0 === 'bite' || st0 === 'reel') zt = CAM_ZOOM - 1.15 * (f.castPower || 0);
       var cz = this.cameras.main;
       if (Math.abs(cz.zoom - zt) > 0.004) cz.setZoom(cz.zoom + (zt - cz.zoom) * Math.min(1, dt * 5)); else if (cz.zoom !== zt) cz.setZoom(zt);
@@ -2295,7 +2296,9 @@ function createSceneClass() {
       if (st === 'idle') return;
       if (st === 'charge' && Ctl.modal) { this.endCharge(); return; }
       if (st === 'charge') {
-        f.t += dt; f.power = Math.min(1, f.t / CHARGE_TIME);
+        f.t += dt;
+        var ph = (f.t / CHARGE_TIME) % 2; f.power = ph <= 1 ? ph : 2 - ph;          // naik sampai penuh, lalu turun lagi (bolak-balik)
+        if (f.power > (f.peak || 0)) f.peak = f.power;
         var mv0 = this.mv || [0, 0];
         if (Math.hypot(mv0[0], mv0[1]) > 0.35) this.dirIdx = snapDir(mv0[0], mv0[1]);     // geser joystick untuk membidik
         var pt = this.aimPoint(f.power), okw = this.waterAt(pt.gx, pt.gy);
@@ -2384,7 +2387,7 @@ function createSceneClass() {
         UI.setFishButton('LEMPAR', '', st === 'idle');
         UI.setBanner('', ''); UI.setSpot('');
       } else if (st === 'charge') {
-        UI.setFishButton('LEPAS', 'bite', true); UI.setBanner('Tahan... lepas untuk melempar (makin jauh = ikan makin langka)', ''); UI.setSpot('');
+        UI.setFishButton('LEPAS', 'bite', true); UI.setBanner('Lepas tepat saat bar PENUH untuk lemparan terjauh!', ''); UI.setSpot('');
       } else if (st === 'casting') {
         UI.setFishButton('BATAL', 'cancel', true); UI.setBanner('Melempar kail...', ''); UI.setSpot('');
       } else if (st === 'waiting') {

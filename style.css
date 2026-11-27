@@ -305,3 +305,5 @@ html, body {
 #castBar i { display: block; height: 100%; width: 0; background: linear-gradient(#ffe27a, #ff9a2a); }
 #castBar.bad i { background: linear-gradient(#ff9a8a, #e53935); }
 #castBar span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; text-shadow: 0 2px 0 #000; letter-spacing: .8px; }
+#castBar.peak { border-color: #b6ff7a; box-shadow: 0 0 14px rgba(120,255,90,.8); }
+#castBar.peak i { background: linear-gradient(#c8ff8a, #2fd04a); }
