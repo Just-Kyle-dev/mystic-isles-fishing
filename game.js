@@ -43,44 +43,70 @@ var RARITY = {
 };
 
 var FISH = [
-  { id: 'teri',     name: 'Teri Pantai',        rarity: 'common',    price: 10,   c: ['#aebfcc', '#eef5fa', '#7f98a8'],
+  { id: 'teri', kg: [0.02, 0.12],     name: 'Teri Pantai',        rarity: 'common',    price: 10,   c: ['#aebfcc', '#eef5fa', '#7f98a8'],
     desc: 'Ikan kecil keperakan yang berenang berkelompok di air dangkal. Enak digoreng renyah.' },
-  { id: 'kembung',  name: 'Kembung Biru',       rarity: 'common',    price: 14,   c: ['#3f7fb5', '#d5e8f5', '#2b5f8c'],
+  { id: 'kembung', kg: [0.2, 0.8],  name: 'Kembung Biru',       rarity: 'common',    price: 14,   c: ['#3f7fb5', '#d5e8f5', '#2b5f8c'],
     desc: 'Perenang cepat berpunggung biru. Sering terlihat di sekitar dermaga.' },
-  { id: 'bandeng',  name: 'Bandeng Laguna',     rarity: 'common',    price: 18,   c: ['#bfc9cf', '#f1f3f4', '#8d9aa2'],
+  { id: 'bandeng', kg: [0.5, 2.5],  name: 'Bandeng Laguna',     rarity: 'common',    price: 18,   c: ['#bfc9cf', '#f1f3f4', '#8d9aa2'],
     desc: 'Ikan tenang penghuni laguna hangat. Dagingnya gurih dan lembut.' },
-  { id: 'kakap',    name: 'Kakap Merah',        rarity: 'uncommon',  price: 40,   c: ['#d9473a', '#f5b7a8', '#a8322a'],
+  { id: 'kakap', kg: [1, 6],    name: 'Kakap Merah',        rarity: 'uncommon',  price: 40,   c: ['#d9473a', '#f5b7a8', '#a8322a'],
     desc: 'Bersisik merah menyala dan suka bersembunyi di dekat karang.' },
-  { id: 'badut',    name: 'Ikan Badut Jingga',  rarity: 'uncommon',  price: 55,   c: ['#ff8a1f', '#ffc27a', '#d96a00'], stripe: '#ffffff',
+  { id: 'badut', kg: [0.1, 0.5],    name: 'Ikan Badut Jingga',  rarity: 'uncommon',  price: 55,   c: ['#ff8a1f', '#ffc27a', '#d96a00'], stripe: '#ffffff',
     desc: 'Berloreng putih dan bersahabat dengan anemon. Cantik dan lincah.' },
-  { id: 'baronang', name: 'Baronang Tropis',    rarity: 'uncommon',  price: 70,   c: ['#c9b13a', '#f1e6a0', '#8f7d1c'],
+  { id: 'baronang', kg: [0.5, 2.5], name: 'Baronang Tropis',    rarity: 'uncommon',  price: 70,   c: ['#c9b13a', '#f1e6a0', '#8f7d1c'],
     desc: 'Pemakan lumut yang waspada. Sirip punggungnya tajam, hati-hati!' },
-  { id: 'kerapu',   name: 'Kerapu Macan',       rarity: 'rare',      price: 150,  c: ['#8a6a47', '#d8c3a0', '#5e432a'], dots: '#3d2a18',
+  { id: 'kerapu', kg: [3, 25],   name: 'Kerapu Macan',       rarity: 'rare',      price: 150,  c: ['#8a6a47', '#d8c3a0', '#5e432a'], dots: '#3d2a18',
     desc: 'Predator karang berbintik gelap. Gigitannya kuat dan menarik kail ke bawah.' },
-  { id: 'tenggiri', name: 'Tenggiri Emas',      rarity: 'rare',      price: 210,  c: ['#e0b43a', '#fff0b8', '#b58710'],
+  { id: 'tenggiri', kg: [2, 15], name: 'Tenggiri Emas',      rarity: 'rare',      price: 210,  c: ['#e0b43a', '#fff0b8', '#b58710'],
     desc: 'Ikan ramping berkilau keemasan yang berenang kencang di laut terbuka.' },
-  { id: 'tuna',     name: 'Tuna Sirip Kuning',  rarity: 'epic',      price: 520,  c: ['#27457c', '#dfe6ee', '#ffd400'],
+  { id: 'tuna', kg: [20, 180],     name: 'Tuna Sirip Kuning',  rarity: 'epic',      price: 520,  c: ['#27457c', '#dfe6ee', '#ffd400'],
     desc: 'Raksasa laut dalam bersirip kuning terang. Kebanggaan setiap nelayan.' },
-  { id: 'naga',     name: 'Naga Laut Pelangi',  rarity: 'legendary', price: 2500, c: ['#ff5ea8', '#fff4ff', '#7a5cff'], rainbow: true,
+  { id: 'naga', kg: [40, 400],     name: 'Naga Laut Pelangi',  rarity: 'legendary', price: 2500, c: ['#ff5ea8', '#fff4ff', '#7a5cff'], rainbow: true,
     desc: 'Makhluk legendaris bersisik pelangi. Konon hanya muncul bagi nelayan yang sabar.' }
 ];
 var FISH_BY_ID = {};
 FISH.forEach(function (f) { FISH_BY_ID[f.id] = f; });
 
 /* ---------- Level & XP pemain ---------- */
-var LEVEL_MAX = 50;
-var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500 };   // XP per ikan tertangkap
+var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500 };   // XP dasar per ikan (dikali faktor berat)
 var XP_FIRST = 20;                                  // bonus XP untuk jenis ikan yang baru pertama kali ditangkap
-function xpToNext(l) { return 40 + l * 20; }        // XP dari level l ke l+1 (Lv1 -> Lv2 = 60 XP)
-function levelInfo(xp) {
-  var l = 1, rest = Math.max(0, Math.floor(xp || 0));
-  while (l < LEVEL_MAX && rest >= xpToNext(l)) { rest -= xpToNext(l); l++; }
-  var need = l >= LEVEL_MAX ? 0 : xpToNext(l);
-  return { level: l, cur: rest, need: need, frac: need ? rest / need : 1 };
+function xpToNext(l) { return Math.round(80 * Math.pow(l, 1.4)); }   // XP dari level l ke l+1 (Lv1->2 = 80, Lv10->11 = 2.010, Lv50->51 = 19.127); ubah angka 80 / 1.4 untuk atur kesulitan
+function levelInfo(xp) {                            // level tidak terbatas
+  var l = 1, rest = Math.max(0, Math.floor(xp || 0)), need = xpToNext(1);
+  while (rest >= need && l < 100000) { rest -= need; l++; need = xpToNext(l); }
+  return { level: l, cur: rest, need: need, frac: rest / need };
 }
 function levelReward(l) { return l * 25; }          // hadiah Coins saat mencapai level l
 function rankTitle(l) {
-  return l >= 50 ? 'Legenda Laut' : l >= 35 ? 'Master Pancing' : l >= 20 ? 'Pemburu Ikan' : l >= 10 ? 'Nelayan Handal' : l >= 5 ? 'Pemancing Lokal' : 'Nelayan Pemula';
+  return l >= 100 ? 'Dewa Laut' : l >= 75 ? 'Raja Samudra' : l >= 50 ? 'Legenda Laut' : l >= 35 ? 'Master Pancing' : l >= 20 ? 'Pemburu Ikan' : l >= 10 ? 'Nelayan Handal' : l >= 5 ? 'Pemancing Lokal' : 'Nelayan Pemula';
+}
+
+/* ---------- Berat ikan (kg): makin berat => makin mahal & makin besar XP ---------- */
+function roundKg(kg) { return Math.max(0.01, kg < 10 ? Math.round(kg * 100) / 100 : Math.round(kg * 10) / 10); }
+function fmtNum(kg) { var d = kg < 10 ? 2 : 1; return kg.toLocaleString('id-ID', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function fmtKg(kg) { return fmtNum(kg) + ' kg'; }
+function sizeT(f, kg) { var r = f.kg[1] - f.kg[0]; return r > 0 ? Math.max(0, Math.min(1, (kg - f.kg[0]) / r)) : 0; }   // 0 = terkecil, 1 = terbesar
+function sizeFactor(f, kg) { return 0.5 + 1.5 * sizeT(f, kg); }      // 0,5x (terkecil) sampai 2x (terbesar)
+function priceOf(id, kg) { var f = FISH_BY_ID[id]; return Math.max(1, Math.round(f.price * sizeFactor(f, kg))); }
+function xpOf(f, kg) { return Math.max(1, Math.round(XP_FISH[f.rarity] * sizeFactor(f, kg))); }
+function defaultKg(f) { return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) / 3); }   // berat yang harganya = harga dasar (dipakai untuk save lama)
+function rollKg(f, luck) {                          // ikan besar jarang; lemparan lebih jauh sedikit menambah peluang ikan besar
+  var t = Math.pow(Math.random(), 1.7 - 0.5 * (luck || 0));
+  return roundKg(f.kg[0] + (f.kg[1] - f.kg[0]) * t);
+}
+function blankKgs() { var r = [], i; for (i = 0; i < 50; i++) r.push(null); return r; }
+function cleanKgs(arr, slots) {
+  var r = [], i;
+  for (i = 0; i < slots.length; i++) {
+    var id = slots[i], v = Array.isArray(arr) ? +arr[i] : 0;
+    r.push(id ? (v > 0 && isFinite(v) ? roundKg(v) : defaultKg(FISH_BY_ID[id])) : null);
+  }
+  return r;
+}
+function cleanRecord(o) {
+  var r = {};
+  if (o && typeof o === 'object') FISH.forEach(function (f) { var v = +o[f.id]; if (v > 0 && isFinite(v)) r[f.id] = roundKg(v); });
+  return r;
 }
 function cleanName(s) {
   s = String(s == null ? '' : s).replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14).trim();
@@ -111,7 +137,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
   return { slots: r, over: over, earn: earn };
 }
 var Save = {
-  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0 },
+  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {} },
   migrated: 0,
   load: function () {
     try {
@@ -122,6 +148,8 @@ var Save = {
       this.data.coins = Math.max(0, Math.floor(+d.coins || 0));
       if (Array.isArray(d.slots)) this.data.slots = cleanSlots(d.slots);
       else { var m = slotsFromCounts(cleanCounts(d.inv)); this.data.slots = m.slots; this.data.coins += m.earn; this.migrated = m.over; }
+      this.data.kgs = cleanKgs(d.kgs, this.data.slots);
+      this.data.record = cleanRecord(d.record);
       syncInv();
       this.data.caught = cleanCounts(d.caught);
       this.data.px = typeof d.px === 'number' ? d.px : null;
@@ -138,7 +166,7 @@ var Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* abaikan */ }
   },
   reset: function () {
-    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0 };
+    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {} };
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* abaikan */ }
   }
 };
@@ -149,9 +177,9 @@ function syncInv() {                      // hitungan per jenis (dipakai toko) d
   Save.data.inv = inv;
 }
 function freeSlots() { var n = 0; Save.data.slots.forEach(function (x) { if (!x) n++; }); return n; }
-function addFishSlot(id) {
+function addFishSlot(id, kg) {
   var s = Save.data.slots;
-  for (var i = 0; i < s.length; i++) if (!s[i]) { s[i] = id; syncInv(); return i; }
+  for (var i = 0; i < s.length; i++) if (!s[i]) { s[i] = id; Save.data.kgs[i] = kg || defaultKg(FISH_BY_ID[id]); syncInv(); return i; }
   return -1;
 }
 
@@ -1418,8 +1446,9 @@ function fitStage() {
 function totalFish() {
   var n = 0; for (var k in Save.data.inv) n += Save.data.inv[k]; return n;
 }
+function speciesValue(id) { var v = 0; Save.data.slots.forEach(function (s, i) { if (s === id) v += priceOf(id, Save.data.kgs[i]); }); return v; }
 function totalValue() {
-  var v = 0; FISH.forEach(function (f) { v += (Save.data.inv[f.id] || 0) * f.price; }); return v;
+  var v = 0; Save.data.slots.forEach(function (id, i) { if (id) v += priceOf(id, Save.data.kgs[i]); }); return v;
 }
 function fmt(n) { return Math.floor(n).toLocaleString('id-ID'); }
 function rarTag(r) { return '<span class="r-' + r + '">' + RARITY[r].label + '</span>'; }
@@ -1593,7 +1622,7 @@ var Hotbar = {
       } else img.style.visibility = 'hidden';
     }
     var sid = heldFishId();
-    this.name.textContent = Equip.sel === 0 ? 'Joran Kayu Pemula' : (sid ? FISH_BY_ID[sid].name : '');
+    this.name.textContent = Equip.sel === 0 ? 'Joran Kayu Pemula' : (sid ? FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
   },
   canSwitch: function () {
     var st = scene && scene.fish ? scene.fish.state : 'idle';
@@ -1647,11 +1676,13 @@ function fishRowHTML(f, right) {
   return '<img class="ficon" src="' + ICON[f.id] + '" alt=""><div class="fname"><b>' + f.name + '</b><span>' + rarTag(f.rarity) + '</span></div><div class="cnt">' + right + '</div>';
 }
 function fishDetailHTML(f, extra) {
-  var n = Save.data.inv[f.id] || 0, caught = Save.data.caught[f.id] || 0;
+  var n = Save.data.inv[f.id] || 0, caught = Save.data.caught[f.id] || 0, rec = Save.data.record[f.id];
   return '<img class="big" src="' + ICON[f.id] + '" alt=""><h3>' + f.name + '</h3>' +
     '<div class="tag">' + rarTag(f.rarity) + '</div>' +
+    '<div class="stat"><span>Kisaran berat</span><b>' + fmtNum(f.kg[0]) + ' - ' + fmtKg(f.kg[1]) + '</b></div>' +
+    '<div class="stat"><span>Rekor terberat</span><b>' + (rec ? fmtKg(rec) : '-') + '</b></div>' +
     '<div class="stat"><span>Jumlah dimiliki</span><b>' + n + '</b></div>' +
-    '<div class="stat"><span>Harga jual</span><b>' + fmt(f.price) + ' Coins</b></div>' +
+    '<div class="stat"><span>Nilai di tas</span><b>' + fmt(speciesValue(f.id)) + ' Coins</b></div>' +
     '<div class="stat"><span>Total tertangkap</span><b>' + caught + '</b></div>' +
     '<p>' + f.desc + '</p>' + (extra || '');
 }
@@ -1683,7 +1714,9 @@ function slotDetailHTML(i) {
   var f = FISH_BY_ID[id];
   return '<img class="big" src="' + ICON[id] + '" alt=""><h3>' + f.name + '</h3><div class="tag">' + rarTag(f.rarity) + '</div>' +
     '<div class="stat"><span>Kotak</span><b>' + (i + 1) + (i < NHOT ? ' (hotbar ' + (i + 2) + ')' : '') + '</b></div>' +
-    '<div class="stat"><span>Harga jual</span><b>' + fmt(f.price) + ' Coins</b></div>' +
+    '<div class="stat"><span>Berat</span><b>' + fmtKg(Save.data.kgs[i]) + '</b></div>' +
+    '<div class="stat"><span>Harga jual</span><b>' + fmt(priceOf(id, Save.data.kgs[i])) + ' Coins</b></div>' +
+    '<div class="stat"><span>Rekor jenis ini</span><b>' + fmtKg(Save.data.record[id] || Save.data.kgs[i]) + '</b></div>' +
     '<div class="stat"><span>Total tertangkap</span><b>' + (Save.data.caught[id] || 0) + '</b></div>' +
     '<p>' + f.desc + '</p><div class="btns">' +
     (i < NHOT ? '<button class="btn blue" type="button" id="btnHold">Pegang</button>' : '') +
@@ -1696,10 +1729,10 @@ function renderBag() {
     var d = document.createElement('div');
     d.className = 'slot' + (i < NHOT ? ' hot' : '') + (id ? ' has' : '') + (slotSel === i ? ' sel' : '') + (moveFrom === i ? ' mv' : '');
     if (id) d.style.setProperty('--rc', RARITY[FISH_BY_ID[id].rarity].color);
-    d.innerHTML = (i < NHOT ? '<b class="sk">' + (i + 2) + '</b>' : '') + (id ? '<img src="' + ICON[id] + '" alt=""><i class="rb"></i>' : '');
+    d.innerHTML = (i < NHOT ? '<b class="sk">' + (i + 2) + '</b>' : '') + (id ? '<img src="' + ICON[id] + '" alt=""><b class="kg">' + fmtNum(Save.data.kgs[i]) + '</b><i class="rb"></i>' : '');
     d.addEventListener('click', function () {
       if (moveFrom !== null) {
-        var sl = Save.data.slots, t = sl[moveFrom]; sl[moveFrom] = sl[i]; sl[i] = t;
+        var sl = Save.data.slots, kg = Save.data.kgs, t = sl[moveFrom], tk = kg[moveFrom]; sl[moveFrom] = sl[i]; sl[i] = t; kg[moveFrom] = kg[i]; kg[i] = tk;
         moveFrom = null; slotSel = i; Save.write(); Hotbar.render();
       } else slotSel = i;
       renderBag();
@@ -1758,21 +1791,23 @@ function renderProfile() {
   $('pfName').value = d.name;
   $('pfTitle').textContent = rankTitle(li.level);
   $('pfLevel').textContent = 'Level ' + li.level;
-  $('pfXpText').textContent = li.need ? fmt(li.cur) + ' / ' + fmt(li.need) + ' XP' : 'Level maksimum';
+  $('pfXpText').textContent = fmt(li.cur) + ' / ' + fmt(li.need) + ' XP';
   $('pfBar').firstElementChild.style.width = Math.round(li.frac * 100) + '%';
-  $('pfNext').textContent = li.need ? 'Naik ke Level ' + (li.level + 1) + ' = hadiah ' + fmt(levelReward(li.level + 1)) + ' Coins' : 'Kamu sudah mencapai level tertinggi!';
-  var total = 0, found = 0, best = null, perRar = {};
+  $('pfNext').textContent = 'Naik ke Level ' + (li.level + 1) + ' = hadiah ' + fmt(levelReward(li.level + 1)) + ' Coins';
+  var total = 0, found = 0, best = null, heavy = null, perRar = {};
   RARITY_ORDER.forEach(function (r) { perRar[r] = 0; });
   FISH.forEach(function (f) {
     var n = d.caught[f.id] || 0;
     if (n > 0) {
       total += n; found++; perRar[f.rarity] += n;
+      if (d.record[f.id] && (!heavy || d.record[f.id] > d.record[heavy.id])) heavy = f;
       if (!best || RARITY_ORDER.indexOf(f.rarity) > RARITY_ORDER.indexOf(best.rarity) || (f.rarity === best.rarity && f.price > best.price)) best = f;
     }
   });
   var h = '<div class="pfStat"><span>Total ikan tertangkap</span><b>' + fmt(total) + '</b></div>' +
     '<div class="pfStat"><span>Koleksi ikan</span><b>' + found + ' / ' + FISH.length + '</b></div>' +
     '<div class="pfStat"><span>Tangkapan terlangka</span><b>' + (best ? '<span class="r-' + best.rarity + '">' + best.name + '</span>' : '-') + '</b></div>' +
+    '<div class="pfStat"><span>Ikan terberat</span><b>' + (heavy ? fmtKg(d.record[heavy.id]) + ' (' + heavy.name + ')' : '-') + '</b></div>' +
     '<div class="pfStat"><span>Coins</span><b>' + fmt(d.coins) + '</b></div>' +
     '<div class="pfStat"><span>Total XP</span><b>' + fmt(d.xp) + '</b></div>' +
     '<div class="pfRar">';
@@ -1784,12 +1819,16 @@ function renderProfile() {
   startPortrait();
 }
 
-function sellFish(id, all) {
-  var sl = Save.data.slots, cnt = 0, i;
-  if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { sl[i] = null; cnt++; } }
-  else { for (i = sl.length - 1; i >= 0; i--) if (sl[i] === id) { sl[i] = null; cnt = 1; break; } }
+function lightestIdx(id) {
+  var sl = Save.data.slots, kg = Save.data.kgs, li = -1, i;
+  for (i = 0; i < sl.length; i++) if (sl[i] === id && (li < 0 || kg[i] < kg[li])) li = i;
+  return li;
+}
+function sellFish(id, all) {                          // jual 1 = ikan paling ringan dari jenis itu
+  var sl = Save.data.slots, kg = Save.data.kgs, cnt = 0, earn = 0, i;
+  if (all) { for (i = 0; i < sl.length; i++) if (sl[i] === id) { earn += priceOf(id, kg[i]); sl[i] = null; kg[i] = null; cnt++; } }
+  else { var li = lightestIdx(id); if (li >= 0) { earn = priceOf(id, kg[li]); sl[li] = null; kg[li] = null; cnt = 1; } }
   if (!cnt) return;
-  var earn = cnt * FISH_BY_ID[id].price;
   syncInv();
   Save.data.coins += earn;
   Save.write();
@@ -1799,9 +1838,9 @@ function sellFish(id, all) {
 }
 function sellEverything() {
   var cnt = 0, earn = 0;
-  Save.data.slots.forEach(function (id) { if (id) { cnt++; earn += FISH_BY_ID[id].price; } });
+  Save.data.slots.forEach(function (id, i) { if (id) { cnt++; earn += priceOf(id, Save.data.kgs[i]); } });
   if (!cnt) return;
-  Save.data.slots = cleanSlots(null); syncInv();
+  Save.data.slots = cleanSlots(null); Save.data.kgs = blankKgs(); syncInv();
   Save.data.coins += earn;
   Save.write();
   UI.setCoins(true); UI.setBag(); Hotbar.render();
@@ -1817,16 +1856,16 @@ function renderShop() {
     var row = document.createElement('div');
     row.className = 'row' + (shopSel === f.id ? ' sel' : '');
     row.style.setProperty('--rc', RARITY[f.rarity].color);
-    row.innerHTML = fishRowHTML(f, 'x' + Save.data.inv[f.id] + '<small>' + fmt(f.price) + ' /ekor</small>');
+    row.innerHTML = fishRowHTML(f, 'x' + Save.data.inv[f.id] + '<small>' + fmt(speciesValue(f.id)) + ' Coins</small>');
     row.addEventListener('click', function () { shopSel = f.id; renderShop(); });
     list.appendChild(row);
   });
   var say = '<div class="npcSay">' + (owned.length ? npcLine : (npcLine === NPC_SAY.hi ? NPC_SAY.none : npcLine)) + '</div>';
   if (shopSel) {
-    var f = FISH_BY_ID[shopSel], n = Save.data.inv[shopSel];
+    var f = FISH_BY_ID[shopSel], li = lightestIdx(shopSel);
     detail.innerHTML = say + fishDetailHTML(f,
-      '<div class="btns"><button class="btn blue" type="button" id="sell1">Jual 1 (+' + fmt(f.price) + ')</button>' +
-      '<button class="btn" type="button" id="sellN">Jual Semua (+' + fmt(n * f.price) + ')</button></div>');
+      '<div class="btns"><button class="btn blue" type="button" id="sell1">Jual Teringan (+' + fmt(priceOf(shopSel, Save.data.kgs[li])) + ')</button>' +
+      '<button class="btn" type="button" id="sellN">Jual Semua (+' + fmt(speciesValue(shopSel)) + ')</button></div>');
     $('sell1').addEventListener('click', function () { sellFish(shopSel, false); });
     $('sellN').addEventListener('click', function () { sellFish(shopSel, true); });
   } else {
@@ -2215,7 +2254,7 @@ function createSceneClass() {
         if (!id) { this.held.setVisible(false); return; }
         var h = HERO_HAND[this.curFrame]; if (!h) return;
         var hx = p.x + (h[0] * 2 - HC_W) * fl, hy = p.y + (h[1] * 2 - HC_FOOT * 2);
-        this.held.setTexture('fish_' + id).setVisible(true).setScale(1.25).setFlipX(fl < 0)
+        this.held.setTexture('fish_' + id).setVisible(true).setScale(1.25 * (0.8 + 0.5 * sizeT(FISH_BY_ID[id], Save.data.kgs[Equip.sel - 1]))).setFlipX(fl < 0)
           .setPosition(hx + fl * 5, hy - 6).setAngle(-24 * fl).setDepth(back ? p.y + 0.2 : p.y + 3);
       }
     }
@@ -2272,6 +2311,7 @@ function createSceneClass() {
     startBite() {
       var f = this.fish, luck = f.luck || 0;          // makin jauh lemparan, makin besar peluang ikan langka
       f.def = rollFish(luck);
+      f.kg = rollKg(f.def, luck);
       f.window = RARITY[f.def.rarity].window;
       f.state = 'bite'; f.t = 0;
       this.splash(f.bx, f.by);
@@ -2312,10 +2352,13 @@ function createSceneClass() {
       var self = this, f = this.fish, def = f.def;
       if (!def) return;
       var first = !(Save.data.caught[def.id] > 0);
-      if (addFishSlot(def.id) < 0) { Save.data.coins += def.price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
+      var kg = f.kg || defaultKg(def), price = priceOf(def.id, kg);
+      if (addFishSlot(def.id, kg) < 0) { Save.data.coins += price; UI.setCoins(true); }   // pengaman: tas penuh => otomatis terjual
       f.caughtId = def.id;
+      var isRec = kg > (Save.data.record[def.id] || 0);
+      if (isRec) Save.data.record[def.id] = kg;
       Save.data.caught[def.id] = (Save.data.caught[def.id] || 0) + 1;
-      var gainXp = XP_FISH[def.rarity] + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
+      var gainXp = xpOf(def, kg) + (first ? XP_FIRST : 0), lvUp = addXp(gainXp);
       this.savePos();
       UI.setBag(); Hotbar.render();
       var rc = RARITY[def.rarity].color, bx = f.bx, by = f.by, foot = this.foot;
@@ -2337,8 +2380,9 @@ function createSceneClass() {
 
       var r = RARITY[def.rarity];
       UI.toast(
-        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : '') + def.name +
-        '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - Jual ' + fmt(def.price) + ' Coins - +' + gainXp + ' XP</small></div>',
+        '<img src="' + ICON[def.id] + '" alt=""><div>' + (first ? 'BARU! ' : (isRec ? 'REKOR! ' : '')) + def.name +
+        '<small><span class="rar" style="color:' + rc + '">' + r.label + '</span> - ' + fmtKg(kg) + '</small>' +
+        '<small>Jual ' + fmt(price) + ' Coins - +' + gainXp + ' XP</small></div>',
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
       if (lvUp.up) {                                   // pesan naik level muncul setelah pesan ikan selesai
         setTimeout(function () {
@@ -2551,7 +2595,7 @@ function start() {
 window.__TF = {
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
-  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp
+  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp, priceOf: priceOf, xpOf: xpOf, rollKg: rollKg
 };
 
 start();
