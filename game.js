@@ -356,15 +356,7 @@ function buildMap() {
   for (j = 0; j < GRID; j++) for (i = 0; i < GRID; i++) if (T[j * GRID + i] === SAND || T[j * GRID + i] === GRASS) cand2.push([i, j]);
   for (i = cand2.length - 1; i > 0; i--) { j = Math.floor(R2() * (i + 1)); var t2 = cand2[i]; cand2[i] = cand2[j]; cand2[j] = t2; }
   function farFrom(list, x, y, d) { for (var q = 0; q < list.length; q++) if (Math.hypot(list[q].gx - x, list[q].gy - y) < d) return false; return true; }
-  for (var q = 0; q < cand2.length && decor.length < 9; q++) {
-    var ri = cand2[q][0], rj = cand2[q][1];
-    if (!nearWater(ri, rj) || (ri >= C + 4 && Math.abs(rj - C) <= 4)) continue;
-    var rx = ri + 0.3 + R2() * 0.4, ry = rj + 0.3 + R2() * 0.4;
-    if (!farFrom(decor, rx, ry, 2.2)) continue;
-    var blocked = false;
-    for (var oo = 0; oo < obstacles.length; oo++) if (obstacles[oo].i === ri && obstacles[oo].j === rj) blocked = true;
-    if (!blocked) decor.push({ kind: 'reed', gx: rx, gy: ry });
-  }
+  var q;   // (alang-alang dihapus: sebelumnya menutupi karakter saat berdiri di tepi pantai)
   var pads = 0;
   for (var tries = 0; tries < 900 && pads < 8; tries++) {
     var pi = 1 + Math.floor(R2() * (GRID - 2)), pj = 1 + Math.floor(R2() * (GRID - 2));
@@ -1150,8 +1142,8 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
   var i, x, y;
 
   function shoeAt(fx, fy, dir, c) {                                    // sepatu dengan sol putih
-    if (dir === 0) { R(fx - 2, fy, 5, 2, c[1]); R(fx - 2, fy, 2, 1, c[0]); R(fx + 1, fy + 1, 2, 1, c[2]); R(fx - 2, fy + 2, 5, 1, pal.sole); }
-    else { R(fx - 2, fy, 6, 2, c[1]); R(fx - 2, fy, 3, 1, c[0]); R(fx + 2, fy, 2, 2, c[2]); R(fx - 2, fy + 2, 6, 1, pal.sole); }
+    if (dir === 0) { R(fx - 2, fy, 5, 2, c[1]); R(fx - 2, fy, 2, 1, c[0]); R(fx + 1, fy + 1, 2, 1, c[2]); R(fx - 2, fy + 2, 5, 1, pal.sole); R(fx, fy, 1, 1, '#dfe4ee'); }
+    else { R(fx - 2, fy, 6, 2, c[1]); R(fx - 2, fy, 3, 1, c[0]); R(fx + 2, fy, 2, 2, c[2]); R(fx - 2, fy + 2, 6, 1, pal.sole); R(fx + 1, fy, 2, 1, '#dfe4ee'); R(fx, fy + 1, 1, 1, c[2]); }
   }
   function head() {
     var hy = by;                                                        // posisi vertikal kepala ikut bob
@@ -1162,19 +1154,24 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
       R(hx + 8, 4 + hy, 7, 6, skin[1]); R(hx + 9, 10 + hy, 5, 1, skin[2]);   // wajah + dagu
       R(hx + 14, 8 + hy, 2, 1, skin[1]); R(hx + 14, 9 + hy, 1, 1, skin[2]); // hidung
       R(hx + 8, 4 + hy, 1, 5, skin[0]); R(hx + 9, 4 + hy, 5, 1, skin[2]);
-      R(hx + 13, 10 + hy, 2, 1, pal.mouth);                                                                  // mulut
+      R(hx + 15, 8 + hy, 1, 1, skin[0]); R(hx + 14, 7 + hy, 1, 1, skin[0]);                                   // sorot hidung
+      R(hx + 13, 10 + hy, 2, 1, pal.mouth); R(hx + 13, 11 + hy, 1, 1, skin[2]);                              // mulut + dagu
       R(hx + 12, 9 + hy, 1, 1, '#f7b3a0');                                                                   // pipi
-      if (P.blink) R(hx + 12, 8 + hy, 2, 1, '#1b1b25'); else { R(hx + 12, 7 + hy, 2, 2, '#1b1b25'); R(hx + 12, 7 + hy, 1, 1, '#ffffff'); }
-      R(hx + 11, 5 + hy, 3, 1, hair);                                                                        // alis
-      R(hx + 8, 6 + hy, 1, 2, skin[2]);                                                                      // telinga
+      if (P.blink) R(hx + 12, 8 + hy, 2, 1, '#1b1b25');
+      else { R(hx + 12, 7 + hy, 2, 2, '#1b1b25'); R(hx + 12, 7 + hy, 1, 1, '#ffffff'); R(hx + 13, 8 + hy, 1, 1, '#3b4f7a'); }   // mata + iris
+      R(hx + 11, 6 + hy, 3, 1, hair);                                                                        // alis
       if (pal.hat === 'cap') {
         R(hx + 6, 1 + hy, 8, 3, '#d62828'); R(hx + 7, 0 + hy, 6, 1, '#d62828'); R(hx + 6, 1 + hy, 3, 1, '#ef4a4a'); R(hx + 12, 3 + hy, 5, 1, '#9d1c1c'); R(hx + 6, 3 + hy, 6, 1, '#9d1c1c');
         R(hx + 5, 4 + hy, 3, 5, hair);
       } else {
-        R(hx + 6, 1 + hy, 6, 1, hair); R(hx + 5, 2 + hy, 8, 1, hair); R(hx + 5, 3 + hy, 9, 1, hair);
-        R(hx + 5, 4 + hy, 4, 6, hair); R(hx + 9, 4 + hy, 2, 1, hair); R(hx + 6, 10 + hy, 3, 1, hair);
-        R(hx + 7, 1 + hy, 3, 1, hhi); R(hx + 6, 2 + hy, 2, 1, hhi); R(hx + 6, 6 + hy, 1, 3, hmid); R(hx + 9, 3 + hy, 3, 1, hmid);
+        R(hx + 7, 0 + hy, 5, 1, hair); R(hx + 6, 1 + hy, 8, 1, hair); R(hx + 5, 2 + hy, 10, 1, hair);
+        R(hx + 5, 3 + hy, 11, 1, hair);                                                                      // poni menutup dahi sampai depan
+        R(hx + 10, 4 + hy, 5, 1, hair); R(hx + 14, 5 + hy, 1, 1, hair); R(hx + 9, 4 + hy, 1, 2, hair);    // poni jatuh + cambang
+        R(hx + 5, 4 + hy, 4, 6, hair); R(hx + 6, 10 + hy, 3, 1, hair); R(hx + 6, 11 + hy, 2, 1, hair);   // rambut belakang sampai tengkuk
+        R(hx + 8, 0 + hy, 2, 1, hhi); R(hx + 7, 1 + hy, 3, 1, hhi); R(hx + 11, 2 + hy, 3, 1, hhi); R(hx + 6, 2 + hy, 1, 1, hhi);
+        R(hx + 6, 6 + hy, 1, 3, hmid); R(hx + 9, 3 + hy, 2, 1, hmid); R(hx + 13, 3 + hy, 2, 1, hmid); R(hx + 12, 4 + hy, 1, 1, hmid); R(hx + 5, 8 + hy, 1, 2, hmid);
       }
+      R(hx + 9, 6 + hy, 2, 2, skin[1]); R(hx + 9, 6 + hy, 1, 1, skin[0]); R(hx + 10, 7 + hy, 1, 1, skin[2]);   // telinga (di atas rambut)
     } else if (back) {
       var sx = s;
       R(9, 10 + hy, 2, 2, skin[2]);
@@ -1183,12 +1180,14 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
         R(5, 1 + hy, 10, 9, hair); R(5, 1 + hy, 10, 4, '#d62828'); R(6, 0 + hy, 8, 1, '#d62828'); R(5, 1 + hy, 4, 1, '#ef4a4a');
       } else {
         R(7, 1 + hy, 6, 1, hair); R(6, 2 + hy, 8, 1, hair); R(5, 3 + hy, 10, 6, hair); R(6, 9 + hy, 8, 1, hair); R(7, 10 + hy, 6, 1, hair);
+        R(8, 0 + hy, 4, 1, hair); R(9, 0 + hy, 2, 1, hhi); R(9, 11 + hy, 2, 1, hair);
         R(7, 2 + hy, 3, 1, hhi); R(6, 3 + hy, 2, 1, hhi); R(8, 5 + hy, 1, 3, hmid); R(11, 4 + hy, 1, 4, hmid); R(9, 8 + hy, 3, 1, hmid); R(13, 4 + hy, 1, 4, '#0d0e12');
+        R(9, 3 + hy, 2, 1, hhi); R(10, 4 + hy, 1, 1, hhi); R(7, 6 + hy, 1, 2, hhi); R(12, 7 + hy, 1, 2, hmid); R(6, 9 + hy, 2, 1, hmid);   // pusaran rambut + helaian
       }
     } else {                                                           // depan
       var o = s;                                                       // pergeseran fitur saat menoleh
       R(9, 10 + hy, 2, 2, skin[2]);
-      R(4, 6 + hy, 1, 2, skin[1]); R(15, 6 + hy, 1, 2, skin[2]); R(4, 6 + hy, 1, 1, skin[0]);
+      R(4, 6 + hy, 1, 2, skin[1]); R(15, 6 + hy, 1, 2, skin[2]); R(4, 6 + hy, 1, 1, skin[0]); R(4, 7 + hy, 1, 1, skin[2]); R(15, 7 + hy, 1, 1, darker(skin[2], 0.85));
       R(5, 4 + hy, 10, 7, skin[1]); R(6, 11 + hy, 8, 0, skin[1]);
       R(5, 4 + hy, 1, 6, skin[0]); R(14, 4 + hy, 1, 6, skin[2]); R(6, 10 + hy, 8, 1, skin[2]);
       R(6, 4 + hy, 8, 1, skin[2]);                                      // bayangan poni di dahi
@@ -1196,7 +1195,8 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
       R(ex, 5 + hy, 2, 1, hair); R(ex + 4, 5 + hy, 2, 1, hair);        // alis
       if (P.blink) { R(ex, 8 + hy, 2, 1, '#1b1b25'); R(ex + 4, 8 + hy, 2, 1, '#1b1b25'); }
       else { R(ex, 7 + hy, 2, 2, '#1b1b25'); R(ex + 4, 7 + hy, 2, 2, '#1b1b25'); R(ex, 7 + hy, 1, 1, '#ffffff'); R(ex + 4, 7 + hy, 1, 1, '#ffffff'); }
-      R(9 + o, 9 + hy, 1, 1, skin[2]);                                   // hidung
+      R(6 + o, 7 + hy, 1, 1, skin[2]); R(13 + o, 7 + hy, 1, 1, skin[2]);   // bayangan kelopak
+      R(9 + o, 8 + hy, 1, 1, skin[0]); R(9 + o, 9 + hy, 1, 1, skin[2]);    // hidung (sorot + bayangan)
       if (P.mouth === 'open') { R(8 + o, 10 + hy, 3, 1, '#7a2a24'); R(9 + o, 10 + hy, 1, 1, '#e8806f'); }
       else if (P.mouth === 'o') R(9 + o, 10 + hy, 2, 1, '#7a2a24');
       else { R(9 + o, 10 + hy, 2, 1, pal.mouth); }
@@ -1208,7 +1208,8 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
         R(7, 1 + hy, 6, 1, hair); R(6, 2 + hy, 8, 1, hair); R(5, 3 + hy, 10, 1, hair);
         R(5, 4 + hy, 3, 1, hair); R(12, 4 + hy, 3, 1, hair); R(8, 4 + hy, 1, 1, hair); R(11, 4 + hy, 1, 1, hair);
         R(5, 5 + hy, 1, 3, hair); R(14, 5 + hy, 1, 3, hair);
-        R(7, 1 + hy, 3, 1, hhi); R(6, 2 + hy, 2, 1, hhi); R(11, 2 + hy, 2, 1, hhi); R(9, 3 + hy, 2, 1, hmid); R(13, 4 + hy, 1, 1, hmid);
+        R(8, 0 + hy, 4, 1, hair); R(9, 0 + hy, 2, 1, hhi); R(6, 3 + hy, 1, 1, hmid); R(5, 8 + hy, 1, 1, hmid); R(14, 8 + hy, 1, 1, hmid);   // volume atas + helaian samping
+        R(7, 1 + hy, 3, 1, hhi); R(6, 2 + hy, 2, 1, hhi); R(11, 2 + hy, 2, 1, hhi); R(9, 3 + hy, 2, 1, hmid); R(13, 4 + hy, 1, 1, hmid); R(7, 4 + hy, 1, 1, hhi); R(12, 4 + hy, 1, 1, hhi);
       }
     }
   }
@@ -1241,6 +1242,7 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
     }
     limb(R, e[0], e[1], h[0], h[1], 2, skn);                              // lengan bawah
     limb(R, sh[0], sh[1], e[0], e[1], 3, sleeve);                          // lengan atas (kaus pendek)
+    R(Math.round(e[0] - 1), Math.round(e[1]), 3, 1, sleeve[2]);            // lipatan ujung lengan baju
     R(Math.round(h[0] - 1), Math.round(h[1]), 2, 2, skn[1]); R(Math.round(h[0] - 1), Math.round(h[1]), 1, 1, skn[0]); R(Math.round(h[0]), Math.round(h[1]) + 1, 1, 1, skn[2]);
     return h;
   }
@@ -1263,6 +1265,10 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
     R(tx + 3, 13 + by, 1, 5, pal.fold); R(tx + 1, 15 + by, 2, 1, pal.fold); R(tx + 5, 14 + by, 1, 1, pal.fold); R(tx + 4, 16 + by, 2, 1, pal.fold);
   }
   for (i = 0; i < tw; i += 2) R(tx + i, 18 + by, 1, 1, pal.stitch);        // jahitan tepi bawah
+  if (!back && !pal.apron) {                                              // saku dada + kerah
+    if (view === 'S') { R(tx + 1, 14 + by, 2, 2, shirt[2]); R(tx + 1, 14 + by, 2, 1, pal.stitch); R(tx + 4, 13 + by, 2, 1, shirt[2]); }
+    else { R(11, 14 + by, 3, 3, shirt[2]); R(11, 14 + by, 3, 1, pal.stitch); R(11, 16 + by, 3, 1, shirt[1]); R(7, 13 + by, 2, 1, shirt[2]); R(11, 13 + by, 1, 1, shirt[2]); }
+  } else if (back && !pal.apron) { R(tx + 1, 13 + by, tw - 2, 1, shirt[2]); }    // kerah belakang
   if (pal.apron) {                                                        // celemek (NPC)
     if (view === 'S') { R(tx + 3, 14 + by, 3, 5, '#f5f5f5'); R(tx + 3, 14 + by, 1, 5, '#ffffff'); }
     else if (!back) { R(7, 14 + by, 6, 5, '#f5f5f5'); R(7, 14 + by, 1, 5, '#ffffff'); R(12, 14 + by, 1, 5, '#d9dde3'); R(7, 18 + by, 6, 1, '#cfd3da'); R(8, 12 + by, 1, 2, '#e6e9ee'); R(11, 12 + by, 1, 2, '#e6e9ee'); }
@@ -1271,6 +1277,8 @@ function drawHeroCell(g, ox, oy, view, P, pal) {
   if (!back && view !== 'S') { R(9, 19 + by, 2, 1, pal.buckle); }
   if (view === 'S') R(tx + 3, 19 + by, 2, 1, pal.buckle);
   if (view !== 'S') { R(tx, 20 + by, tw, 1, pants[1]); R(tx, 20 + by, 1, 1, pants[0]); R(tx + tw - 1, 20 + by, 1, 1, pants[2]); }
+  if (view !== 'S') { R(6, 19 + by, 1, 1, pal.buckle === '#d4bf72' ? '#2a2a31' : pal.belt); R(13, 19 + by, 1, 1, '#2a2a31'); R(9, 21 + by, 2, 1, pants[2]); }   // passant sabuk + kampuh tengah
+  else { R(tx + 1, 19 + by, 1, 1, '#2a2a31'); R(tx + 5, 19 + by, 1, 1, '#2a2a31'); }
 
   // ---------- kepala & lengan dekat ----------
   if (view === 'S') {
