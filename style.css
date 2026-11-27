@@ -295,3 +295,13 @@ html, body {
 .slot .sk { position: absolute; left: 4px; top: 1px; font: 800 12px 'Trebuchet MS', Arial, sans-serif; color: #ffd54a; text-shadow: 0 1px 0 #000; }
 .slot.sel { border-color: #ffd54a; box-shadow: inset 0 0 0 2px rgba(0,0,0,.3), 0 0 0 3px rgba(255,213,74,.45), 0 3px 0 #33240f; }
 .slot.mv { outline: 3px dashed #5fe0e6; outline-offset: 1px; }
+
+/* ---------- Bar tenaga lempar (tahan LEMPAR, lepas untuk melempar) ---------- */
+#castBar {
+  left: 50%; top: 74px; width: 440px; height: 30px; transform: translateX(-50%);
+  display: none; background: rgba(0,0,0,.55); border: 3px solid #fff; border-radius: 16px; overflow: hidden;
+}
+#castBar.show { display: block; }
+#castBar i { display: block; height: 100%; width: 0; background: linear-gradient(#ffe27a, #ff9a2a); }
+#castBar.bad i { background: linear-gradient(#ff9a8a, #e53935); }
+#castBar span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; text-shadow: 0 2px 0 #000; letter-spacing: .8px; }

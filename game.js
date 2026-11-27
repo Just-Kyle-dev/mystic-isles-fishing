@@ -25,6 +25,7 @@ var ELEV_LAND = 0, ELEV_DOCK = 4;
 var WATER = 0, SAND = 1, GRASS = 2, DOCK = 3;
 var WALK_SPEED = 92, RUN_SPEED = 165;   // px layar / detik (jalan pelan, lari saat tombol LARI ditahan)
 var WALK_CYCLE = 52, RUN_CYCLE = 78;    // jarak (px) untuk satu siklus langkah => kaki sinkron dengan gerak
+var CAST_MIN = 80, CAST_MAX = 300, CHARGE_TIME = 1.25;   // jarak lempar (px layar, horizontal) & lama menahan sampai tenaga penuh
 var CAM_ZOOM = 3;                      // 1 = jauh, 3 = dekat dengan karakter (ubah sesuai selera)
 var REEL = {                            // gain = isi bar tiap tekan, decay = bar turun per detik (ikan melawan)
   common: { gain: 0.13, decay: 0.14 }, uncommon: { gain: 0.11, decay: 0.18 }, rare: { gain: 0.09, decay: 0.22 },
@@ -1427,6 +1428,15 @@ var UI = {
     $('biteBar').className = cls === 'bite' ? 'show' : '';
   },
   setBite: function (frac) { $('biteBar').firstElementChild.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%'; },
+  setCastBar: function (on, frac, ok) {
+    var b = $('castBar');
+    if (this.cache.cast !== on) { this.cache.cast = on; b.className = on ? 'show' : ''; }
+    if (!on) return;
+    b.firstElementChild.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+    var bad = !ok; if (this.cache.castBad !== bad) { this.cache.castBad = bad; b.classList.toggle('bad', bad); }
+    var tx = ok ? 'LEPAS UNTUK MELEMPAR  ' + Math.round(CAST_MIN + (CAST_MAX - CAST_MIN) * frac) / 10 + ' m' : 'ARAHKAN KE LAUT';
+    if (this.cache.castTx !== tx) { this.cache.castTx = tx; b.lastElementChild.textContent = tx; }
+  },
   setReel: function (on, frac) {
     var b = $('reelBar');
     if (this.cache.reel !== on) { this.cache.reel = on; b.className = on ? 'show' : ''; }
@@ -1505,13 +1515,13 @@ function initKeyboard() {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { Ctl.keys.sprint = true; return; }
     if (KEYMAP[e.code]) { Ctl.keys[KEYMAP[e.code]] = true; e.preventDefault(); return; }
     if (e.repeat) return;
-    if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.pressFish(); e.preventDefault(); }
+    if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishDown(); e.preventDefault(); }
     else if (e.code === 'KeyE') { if (scene) scene.pressTalk(); }
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
     else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
     else if (e.code === 'Escape') Modal.close();
   });
-  window.addEventListener('keyup', function (e) { if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
+  window.addEventListener('keyup', function (e) { if (e.code === 'Space' || e.code === 'KeyF') { if (scene) scene.fishUp(); } if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Ctl.keys.sprint = false; if (KEYMAP[e.code]) Ctl.keys[KEYMAP[e.code]] = false; });
   window.addEventListener('blur', function () { Ctl.keys = {}; resetJoy(); });
 }
 
@@ -1732,7 +1742,10 @@ function initButtons() {
   function press(id, fn) {
     $(id).addEventListener('pointerdown', function (e) { e.preventDefault(); fn(); });
   }
-  press('btnFish', function () { if (scene) scene.pressFish(); });
+  var fb = $('btnFish');                           // LEMPAR: tahan untuk mengisi tenaga, lepas untuk melempar
+  fb.addEventListener('pointerdown', function (e) { e.preventDefault(); try { fb.setPointerCapture(e.pointerId); } catch (err) { /* abaikan */ } if (scene) scene.fishDown(); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) { fb.addEventListener(ev, function () { if (scene) scene.fishUp(); }); });
+  fb.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   press('btnTalk', function () { if (scene) scene.pressTalk(); });
   press('btnBag', function () { Modal.toggle('inv'); });
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
@@ -1942,16 +1955,8 @@ function createSceneClass() {
       var npcSeq = [0, 0, 1, 1, 2, 2, 3, 2, 2, 1, 1, 0], npcI = 0;
       this.time.addEvent({ delay: 330, loop: true, callback: function () { npcI = (npcI + 1) % npcSeq.length; self.npcSprite.setFrame('i' + npcSeq[npcI]); } });
 
-      // titik memancing (cincin riak di air)
-      M.spots.forEach(function (s) {
-        var sx = (s.gx - s.gy) * 32 + W / 2, sy = (s.gx + s.gy) * 16;
-        for (var k = 0; k < 2; k++) {
-          var ring = self.add.ellipse(sx, sy, 60, 28).setStrokeStyle(3, 0xffffff, 0.9).setDepth(-40);
-          self.tweens.add({ targets: ring, scaleX: { from: 0.45, to: 1.35 }, scaleY: { from: 0.45, to: 1.35 }, alpha: { from: 1, to: 0 }, duration: 1800, repeat: -1, delay: k * 900 });
-        }
-        self.add.text(sx, sy - 14, s.name, { fontFamily: 'Arial, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff', stroke: '#0a4a66', strokeThickness: 4 })
-          .setResolution(3).setOrigin(0.5, 1).setDepth(-39).setAlpha(0.95);
-      });
+      // penanda titik jatuh umpan (muncul saat menahan tombol LEMPAR)
+      this.aimMark = this.add.ellipse(0, 0, 38, 17).setStrokeStyle(3, 0xffffff, 0.95).setDepth(9000).setVisible(false);
 
       // pemain
       this.dirIdx = 2; this.walkT = 0; this.curFrame = '';
@@ -1997,7 +2002,7 @@ function createSceneClass() {
 
       UI.setCoins(false); UI.setBag();
       $('loading').classList.add('gone');
-      UI.hint('Geser joystick untuk berjalan. Dekati laut / cincin riak, lalu tekan LEMPAR. Jual ikan ke Pak Marlin!', 8000);
+      UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR lalu lepas: makin lama ditahan, makin jauh umpan terlempar. Jual ikan ke Pak Marlin!', 9000);
     }
 
     /* ---------- koordinat & tabrakan ---------- */
@@ -2032,30 +2037,32 @@ function createSceneClass() {
     }
 
     /* ---------- memancing ---------- */
-    findFishingTarget() {
-      var best = null, M = this.map, k;
-      for (k = 0; k < M.spots.length; k++) {
-        var s = M.spots[k], d = Math.hypot(this.gx - s.gx, this.gy - s.gy);
-        if (d <= 4.4 && (!best || d < best.d)) best = { spot: s, d: d };
-      }
-      if (best) return { gx: best.spot.gx, gy: best.spot.gy, spot: best.spot };
-      var ci = Math.floor(this.gx), cj = Math.floor(this.gy), bd = 1e9, bi = -1, bj = -1;
-      for (var j = cj - 3; j <= cj + 3; j++) for (var i = ci - 3; i <= ci + 3; i++) {
-        if (i < 0 || j < 0 || i >= GRID || j >= GRID || this.T[j * GRID + i] !== WATER) continue;
-        var dd = Math.hypot(i + 0.5 - this.gx, j + 0.5 - this.gy);
-        if (dd < bd) { bd = dd; bi = i; bj = j; }
-      }
-      if (bi >= 0 && bd <= 2.4) return { gx: bi + 0.5, gy: bj + 0.5, spot: null };
-      return null;
+    /* titik jatuh umpan di depan karakter: jarak ditentukan tenaga (0..1), arah = arah hadap */
+    aimPoint(power) {
+      var a = this.dirIdx * Math.PI / 4, dist = CAST_MIN + (CAST_MAX - CAST_MIN) * power;
+      var sx = Math.cos(a) * dist, sy = Math.sin(a) * 0.5 * dist;
+      return { gx: this.gx + (sx / 32 + sy / 16) / 2, gy: this.gy + (sy / 16 - sx / 32) / 2 };
     }
-    pressFish() {
+    waterAt(gx, gy) {
+      var i = Math.floor(gx), j = Math.floor(gy);
+      return i >= 0 && j >= 0 && i < GRID && j < GRID && this.T[j * GRID + i] === WATER;
+    }
+    autoAim() {                                  // bila arah hadap tidak mengenai air, putar ke arah laut terdekat
+      var self = this, pw = [0.15, 0.4, 0.7, 1], offs = [0, 1, -1, 2, -2, 3, -3, 4], cur = this.dirIdx, k;
+      function ok(d) { self.dirIdx = d; for (var q = 0; q < pw.length; q++) { var p = self.aimPoint(pw[q]); if (self.waterAt(p.gx, p.gy)) return true; } return false; }
+      for (k = 0; k < offs.length; k++) { var d = (cur + offs[k] + 16) % 8; if (ok(d)) { this.dirIdx = d; return; } }
+      this.dirIdx = cur;
+    }
+    fishDown() {
       if (Ctl.modal || !this.fish) return;
       var st = this.fish.state;
-      if (st === 'idle') this.startCast();
+      if (st === 'idle') this.beginCharge();
       else if (st === 'casting' || st === 'waiting') this.cancelFish('Kail ditarik kembali');
       else if (st === 'bite') this.startReel();
       else if (st === 'reel') this.reelPull();
     }
+    fishUp() { if (this.fish && this.fish.state === 'charge') this.releaseCast(); }
+    pressFish() { this.fishDown(); }
     pressTalk() {
       if (Ctl.modal || !this.nearNpc) return;
       if (this.fish.state !== 'idle' && this.fish.state !== 'cooldown') return;
@@ -2117,13 +2124,30 @@ function createSceneClass() {
       var L = 59;
       return { hand: hand, tip: { x: hand.x + Math.cos(ang) * L, y: hand.y + Math.sin(ang) * L }, ang: ang, tx: tx, ty: ty, back: rf.back };
     }
-    startCast() {
-      var tgt = this.findFishingTarget();
-      if (!tgt) { UI.toast('<div>Dekati laut atau cincin riak untuk memancing</div>', '#5fe0e6', false, 1800); return; }
+    beginCharge() {                              // tekan & tahan: tenaga lempar mulai terisi
       if (freeSlots() === 0) { UI.toast('<div>Tas penuh (' + NSLOT + '/' + NSLOT + ')! Jual ikan ke Pak Marlin dulu.</div>', '#ff7b7b', false, 2400); return; }
       if (Equip.sel !== 0) { Equip.sel = 0; Hotbar.render(); }
       var f = this.fish;
-      f.target = tgt; f.spot = tgt.spot; f.state = 'casting'; f.t = 0; f.launch = null; f.caught = false;
+      this.autoAim();
+      f.state = 'charge'; f.t = 0; f.power = 0; f.castPower = 0; f.caught = false; f.launch = null; f.target = null; f.aimOK = null;
+      this.curFrame = '';
+      this.bobber.setVisible(false);
+    }
+    endCharge() {
+      var f = this.fish;
+      f.state = 'idle'; f.t = 0; f.target = null;
+      this.aimMark.setVisible(false); this.hideFishing();
+      UI.setCastBar(false, 0, true);
+    }
+    releaseCast() {                              // lepas: umpan terlempar sejauh tenaga yang terkumpul
+      var f = this.fish, pt = this.aimPoint(f.power);
+      if (!this.waterAt(pt.gx, pt.gy)) {
+        UI.toast('<div>Umpan jatuh di darat! Arahkan ke laut atau tahan lebih lama.</div>', '#ff7b7b', false, 1900);
+        this.endCharge(); return;
+      }
+      f.target = { gx: pt.gx, gy: pt.gy, spot: null }; f.spot = null; f.luck = f.power; f.castPower = f.power;
+      f.state = 'casting'; f.t = 0; f.launch = null; f.caught = false;
+      this.aimMark.setVisible(false); UI.setCastBar(false, 0, true);
       var g = this.rodGeometry();
       this.dirIdx = snapDir(g.tx - this.foot.x, (g.ty - this.foot.y) * 2);
       this.curFrame = '';
@@ -2138,7 +2162,7 @@ function createSceneClass() {
       }
     }
     startBite() {
-      var f = this.fish, luck = f.spot ? f.spot.luck : 0;
+      var f = this.fish, luck = f.luck || 0;          // makin jauh lemparan, makin besar peluang ikan langka
       f.def = rollFish(luck);
       f.window = RARITY[f.def.rarity].window;
       f.state = 'bite'; f.t = 0;
@@ -2218,6 +2242,7 @@ function createSceneClass() {
 
       var f = this.fish, paused = Ctl.modal;
       var mv = paused ? [0, 0] : readMove();
+      this.mv = mv;
       var moving = Math.hypot(mv[0], mv[1]) > 0.28;
 
       // bergerak membatalkan pancingan yang masih menunggu
@@ -2241,7 +2266,8 @@ function createSceneClass() {
 
       // pilih animasi: idle / walk / run / fish / cast / pull / catch
       var st0 = f.state, anim, k;
-      if (st0 === 'casting') { anim = 'cast'; k = f.t < 0.14 ? 0 : (f.t < 0.26 ? 1 : (f.t < 0.4 ? 2 : 3)); }
+      if (st0 === 'charge') { anim = 'cast'; k = 0; }
+      else if (st0 === 'casting') { anim = 'cast'; k = f.t < 0.14 ? 0 : (f.t < 0.26 ? 1 : (f.t < 0.4 ? 2 : 3)); }
       else if (st0 === 'waiting') { anim = 'fish'; k = Math.floor(time / 450) % 2; }
       else if (st0 === 'bite') { anim = 'fish'; k = Math.floor(time / 110) % 2; }
       else if (st0 === 'reel') { anim = 'pull'; k = f.kick > 0.45 ? 1 : 0; }
@@ -2253,6 +2279,12 @@ function createSceneClass() {
       if (this.player.flipX !== dv.flip) this.player.setFlipX(dv.flip);
       this.placePlayer();
       this.updateHeld(time);
+      // kamera menjauh sedikit mengikuti jarak lemparan supaya umpan tetap terlihat
+      var zt = CAM_ZOOM;
+      if (st0 === 'charge') zt = CAM_ZOOM - 1.15 * f.power;
+      else if (st0 === 'casting' || st0 === 'waiting' || st0 === 'bite' || st0 === 'reel') zt = CAM_ZOOM - 1.15 * (f.castPower || 0);
+      var cz = this.cameras.main;
+      if (Math.abs(cz.zoom - zt) > 0.004) cz.setZoom(cz.zoom + (zt - cz.zoom) * Math.min(1, dt * 5)); else if (cz.zoom !== zt) cz.setZoom(zt);
 
       this.updateFishing(time, paused ? 0 : dt);
       this.updateHud();
@@ -2261,6 +2293,22 @@ function createSceneClass() {
     updateFishing(time, dt) {
       var f = this.fish, st = f.state;
       if (st === 'idle') return;
+      if (st === 'charge' && Ctl.modal) { this.endCharge(); return; }
+      if (st === 'charge') {
+        f.t += dt; f.power = Math.min(1, f.t / CHARGE_TIME);
+        var mv0 = this.mv || [0, 0];
+        if (Math.hypot(mv0[0], mv0[1]) > 0.35) this.dirIdx = snapDir(mv0[0], mv0[1]);     // geser joystick untuk membidik
+        var pt = this.aimPoint(f.power), okw = this.waterAt(pt.gx, pt.gy);
+        f.target = { gx: pt.gx, gy: pt.gy, spot: null };
+        var ax = (pt.gx - pt.gy) * 32 + W / 2, ay = (pt.gx + pt.gy) * 16, pul = 1 + Math.sin(time * 0.012) * 0.08;
+        if (f.aimOK !== okw) { f.aimOK = okw; this.aimMark.setStrokeStyle(3, okw ? 0xffffff : 0xff5252, 0.95); }
+        this.aimMark.setVisible(true).setPosition(ax, ay).setScale(pul);
+        UI.setCastBar(true, f.power, okw);
+        var gc = this.rodGeometry();
+        this.placeRod(gc.hand, gc.ang, gc.back);
+        this.rodG.clear();
+        return;
+      }
       var g = this.rodGeometry();
       f.tip = g.tip;
       var sag = 14;
@@ -2279,7 +2327,7 @@ function createSceneClass() {
           if (!f.launch) f.launch = { x: g.tip.x, y: g.tip.y };
           var pr = Math.min(1, (f.t - T0) / (0.55 - T0));
           bx = f.launch.x + (g.tx - f.launch.x) * pr;
-          by = f.launch.y + (g.ty - f.launch.y) * pr - Math.sin(pr * Math.PI) * 70;
+          by = f.launch.y + (g.ty - f.launch.y) * pr - Math.sin(pr * Math.PI) * (30 + 55 * (f.castPower || 0));
           sag = 4;
           if (pr >= 1) {
             f.state = 'waiting'; f.t = 0; f.wait = 2 + Math.random() * 3.5;
@@ -2332,11 +2380,11 @@ function createSceneClass() {
     updateHud() {
       var f = this.fish, st = f.state, M = this.map;
       UI.setReel(st === 'reel', f.prog || 0);
-      var tgt = (st === 'idle' || st === 'cooldown') && !Ctl.modal ? this.findFishingTarget() : null;
       if (st === 'idle' || st === 'cooldown') {
-        UI.setFishButton('LEMPAR', '', st === 'idle' && !!tgt);
-        UI.setBanner('', '');
-        UI.setSpot(tgt && tgt.spot ? ('Spot: ' + tgt.spot.name + stars(tgt.spot.luck)) : '');
+        UI.setFishButton('LEMPAR', '', st === 'idle');
+        UI.setBanner('', ''); UI.setSpot('');
+      } else if (st === 'charge') {
+        UI.setFishButton('LEPAS', 'bite', true); UI.setBanner('Tahan... lepas untuk melempar (makin jauh = ikan makin langka)', ''); UI.setSpot('');
       } else if (st === 'casting') {
         UI.setFishButton('BATAL', 'cancel', true); UI.setBanner('Melempar kail...', ''); UI.setSpot('');
       } else if (st === 'waiting') {
