@@ -359,3 +359,9 @@ html, body {
 .pfRar b { display: block; font-size: 24px; }
 
 .slot .kg { position: absolute; right: 4px; top: 2px; font: 800 11px 'Trebuchet MS', Arial, sans-serif; color: #fff; text-shadow: 0 1px 0 #000, 0 0 3px #000; pointer-events: none; }
+
+/* ---------- Tombol zoom (kanan atas, di bawah tombol layar penuh) ---------- */
+#btnZin, #btnZout { right: 18px; width: 60px; height: 54px; padding: 0; font: 800 36px/1 'Trebuchet MS', Arial, sans-serif; display: flex; align-items: center; justify-content: center; }
+#btnZin { top: 82px; }
+#btnZout { top: 148px; }
+#btnZin.off, #btnZout.off { opacity: .4; filter: grayscale(.6); }

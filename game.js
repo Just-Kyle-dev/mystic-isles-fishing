@@ -26,7 +26,7 @@ var WATER = 0, SAND = 1, GRASS = 2, DOCK = 3;
 var WALK_SPEED = 92, RUN_SPEED = 165;   // px layar / detik (jalan pelan, lari saat tombol LARI ditahan)
 var WALK_CYCLE = 52, RUN_CYCLE = 78;    // jarak (px) untuk satu siklus langkah => kaki sinkron dengan gerak
 var CAST_MIN = 80, CAST_MAX = 300, CHARGE_TIME = 1.25;   // jarak lempar (px layar, horizontal) & lama menahan sampai tenaga penuh
-var CAM_ZOOM = 3;                      // 1 = jauh, 3 = dekat dengan karakter (ubah sesuai selera)
+var ZOOM_MAX = 3, ZOOM_MIN = 1.5, ZOOM_STEP = 0.5;   // zoom diatur pemain lewat tombol + / - (3 = paling dekat, 1,5 = paling jauh)
 var REEL = {                            // gain = isi bar tiap tekan, decay = bar turun per detik (ikan melawan)
   common: { gain: 0.13, decay: 0.14 }, uncommon: { gain: 0.11, decay: 0.18 }, rare: { gain: 0.09, decay: 0.22 },
   epic: { gain: 0.08, decay: 0.26 }, legendary: { gain: 0.07, decay: 0.30 }
@@ -142,7 +142,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
   return { slots: r, over: over, earn: earn };
 }
 var Save = {
-  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {} },
+  data: { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {}, zoom: ZOOM_MAX },
   migrated: 0,
   load: function () {
     try {
@@ -155,6 +155,7 @@ var Save = {
       else { var m = slotsFromCounts(cleanCounts(d.inv)); this.data.slots = m.slots; this.data.coins += m.earn; this.migrated = m.over; }
       this.data.kgs = cleanKgs(d.kgs, this.data.slots);
       this.data.record = cleanRecord(d.record);
+      this.data.zoom = (+d.zoom >= ZOOM_MIN && +d.zoom <= ZOOM_MAX) ? Math.round(+d.zoom * 100) / 100 : ZOOM_MAX;
       syncInv();
       this.data.caught = cleanCounts(d.caught);
       this.data.px = typeof d.px === 'number' ? d.px : null;
@@ -171,7 +172,7 @@ var Save = {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* abaikan */ }
   },
   reset: function () {
-    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {} };
+    this.data = { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), record: {}, zoom: ZOOM_MAX };
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* abaikan */ }
   }
 };
@@ -1464,6 +1465,10 @@ var UI = {
     if (pop) { var b = $('coinBox'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
   },
   setBag: function () { $('bagCount').textContent = totalFish(); },
+  setZoomBtns: function () {
+    $('btnZin').classList.toggle('off', Save.data.zoom >= ZOOM_MAX - 0.001);
+    $('btnZout').classList.toggle('off', Save.data.zoom <= ZOOM_MIN + 0.001);
+  },
   setLevel: function (pop) {
     var li = levelInfo(Save.data.xp);
     $('lvBadge').textContent = li.level;
@@ -1587,6 +1592,8 @@ function initKeyboard() {
     else if (e.code === 'KeyE') { if (scene) scene.pressTalk(); }
     else if (e.code === 'KeyI' || e.code === 'KeyB') Modal.toggle('inv');
     else if (e.code === 'KeyP') Modal.toggle('profile');
+    else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (!Ctl.modal) changeZoom(ZOOM_STEP); }
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract') { if (!Ctl.modal) changeZoom(-ZOOM_STEP); }
     else if (/^Digit[1-7]$/.test(e.code)) Hotbar.pick(+e.code.slice(5) - 1);
     else if (e.code === 'Escape') Modal.close();
   });
@@ -1762,6 +1769,13 @@ function renderInventory() {
   if (invTab === 'bag') renderBag(); else { renderCollection(); updateInvSummary(); }
 }
 
+function changeZoom(delta) {
+  var z = Math.round((Save.data.zoom + delta) * 100) / 100;
+  z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+  if (z === Save.data.zoom) return;
+  Save.data.zoom = z; Save.write(); UI.setZoomBtns();
+}
+
 function addXp(amount) {
   var before = levelInfo(Save.data.xp).level;
   Save.data.xp += amount;
@@ -1891,6 +1905,9 @@ function initButtons() {
   press('btnTalk', function () { if (scene) scene.pressTalk(); });
   press('btnBag', function () { Modal.toggle('inv'); });
   press('btnProfile', function () { Modal.toggle('profile'); });
+  press('btnZin', function () { if (!Ctl.modal) changeZoom(ZOOM_STEP); });
+  press('btnZout', function () { if (!Ctl.modal) changeZoom(-ZOOM_STEP); });
+  window.addEventListener('wheel', function (e) { if (!Ctl.modal && e.deltaY) changeZoom(e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP); }, { passive: true });
   var pn = $('pfName');
   pn.addEventListener('change', function () {
     Save.data.name = cleanName(pn.value); pn.value = Save.data.name;
@@ -1924,7 +1941,7 @@ function initButtons() {
     }
     Save.reset(); resetArm = 0; b.textContent = 'Reset Data';
     invSel = null; shopSel = null; slotSel = null; moveFrom = null; Equip.sel = 0;
-    UI.setCoins(false); UI.setBag(); UI.setLevel(false); Hotbar.render();
+    UI.setCoins(false); UI.setBag(); UI.setLevel(false); UI.setZoomBtns(); Hotbar.render();
     if (scene) scene.resetPlayer();
     renderInventory();
     UI.toast('Data game direset', '#ff7b7b', false, 1800);
@@ -2140,7 +2157,7 @@ function createSceneClass() {
       this.scale.on('resize', function (gs) { self.cameras.main.setSize(gs.width, gs.height); });
       cam.setBounds(0, 0, W, H);
       cam.roundPixels = true;
-      cam.setZoom(CAM_ZOOM);
+      cam.setZoom(Save.data.zoom);
       this.placePlayer();
       cam.centerOn(this.player.x, this.player.y - 20);
       cam.startFollow(this.player, true, 0.12, 0.12);
@@ -2442,9 +2459,9 @@ function createSceneClass() {
       this.placePlayer();
       this.updateHeld(time);
       // kamera menjauh sedikit mengikuti jarak lemparan supaya umpan tetap terlihat
-      var zt = CAM_ZOOM;
-      if (st0 === 'charge') zt = CAM_ZOOM - 1.15 * (f.peak || 0);      // zoom hanya menjauh saat menahan (tidak bolak-balik)
-      else if (st0 === 'casting' || st0 === 'waiting' || st0 === 'bite' || st0 === 'reel') zt = CAM_ZOOM - 1.15 * (f.castPower || 0);
+      var zb = Save.data.zoom, zt = zb, zk = 1.15 * zb / ZOOM_MAX;      // saat melempar, kamera menjauh sedikit dari zoom pilihan pemain
+      if (st0 === 'charge') zt = Math.max(1.1, zb - zk * (f.peak || 0));      // zoom hanya menjauh saat menahan (tidak bolak-balik)
+      else if (st0 === 'casting' || st0 === 'waiting' || st0 === 'bite' || st0 === 'reel') zt = Math.max(1.1, zb - zk * (f.castPower || 0));
       var cz = this.cameras.main;
       if (Math.abs(cz.zoom - zt) > 0.004) cz.setZoom(cz.zoom + (zt - cz.zoom) * Math.min(1, dt * 5)); else if (cz.zoom !== zt) cz.setZoom(zt);
 
@@ -2575,7 +2592,7 @@ function start() {
   initKeyboard();
   initButtons();
   resetJoy();
-  UI.setCoins(false); UI.setBag(); UI.setLevel(false);
+  UI.setCoins(false); UI.setBag(); UI.setLevel(false); UI.setZoomBtns();
   Hotbar.build(); Hotbar.render();
   if (Save.migrated > 0) UI.toast('<div>Tas ikan kini punya 50 kotak. ' + Save.migrated + ' ikan berlebih otomatis dijual.</div>', '#ffd54a', false, 3200);
 
