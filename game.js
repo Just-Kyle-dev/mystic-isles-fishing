@@ -29,20 +29,28 @@ var CAST_MIN = 80, CAST_MAX = 300, CHARGE_TIME = 1.25;   // jarak lempar (px lay
 var ZOOM_MAX = 3, ZOOM_MIN = 1.5, ZOOM_STEP = 0.5;   // zoom diatur pemain lewat tombol + / - (3 = paling dekat, 1,5 = paling jauh)
 var REEL = {                            // gain = isi bar tiap tekan, decay = bar turun per detik (ikan melawan)
   common: { gain: 0.13, decay: 0.14 }, uncommon: { gain: 0.11, decay: 0.18 }, rare: { gain: 0.09, decay: 0.22 },
-  epic: { gain: 0.08, decay: 0.26 }, legendary: { gain: 0.07, decay: 0.30 }
+  epic: { gain: 0.08, decay: 0.26 }, legendary: { gain: 0.07, decay: 0.30 },
+  divine: { gain: 0.065, decay: 0.31 }, exalted: { gain: 0.06, decay: 0.32 }, limited: { gain: 0.065, decay: 0.31 },
+  genesis: { gain: 0.055, decay: 0.33 }, hidden: { gain: 0.05, decay: 0.34 }
 };
 var SAVE_KEY = 'tropicalFishing.save.v1';
 
-var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-/* TAMBAH RARITY BARU: (1) push id ke RARITY_ORDER, (2) isi RARITY di bawah, (3) isi XP_FISH dan REEL, (4) beri ikan dengan rarity itu di FISH.
-   minPower = power joran minimal agar rarity ini bisa muncul dari gigitan (joran lebih lemah: rarity ini tidak pernah muncul).
-   p0 = peluang (%) tanpa luck; p1 = peluang (%) saat luck maksimal. Peluang tiap rarity otomatis dinormalkan. */
+var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'divine', 'exalted', 'limited', 'genesis', 'hidden'];   // urutan TETAP
+/* Peluang tiap rarity dihitung oleh fishing-core (fishing-core.js): W = B x F^S lalu dinormalkan; B & S ada di rarityConfig.js.
+   Di sini hanya tampilan & tantangan: label/color = tampilan, window = jendela reaksi gigitan (detik),
+   minPower = tenaga joran minimal agar ikan rarity ini bisa muncul (syarat ikan; joran lebih lemah: tidak pernah muncul).
+   'limited' khusus event (belum ada event/ikannya, jadi belum pernah muncul). */
 var RARITY = {
-  common:    { label: 'Biasa',     color: '#cfd8dc', window: 1.8,  minPower: 1, p0: 72,   p1: 30 },
-  uncommon:  { label: 'Tidak Biasa', color: '#5fd56a', window: 1.5,  minPower: 1, p0: 22,   p1: 32 },
-  rare:      { label: 'Langka',    color: '#4aa8ff', window: 1.25, minPower: 2, p0: 5.5,  p1: 25 },
-  epic:      { label: 'Epik',      color: '#c96bff', window: 1.0,  minPower: 2, p0: 0.5,  p1: 10 },
-  legendary: { label: 'Legendaris', color: '#ffc23a', window: 0.85, minPower: 3, p0: 0.02, p1: 3  }
+  common:    { label: 'Biasa',       color: '#cfd8dc', window: 1.8,  minPower: 1 },
+  uncommon:  { label: 'Tidak Biasa', color: '#5fd56a', window: 1.5,  minPower: 1 },
+  rare:      { label: 'Langka',      color: '#4aa8ff', window: 1.25, minPower: 2 },
+  epic:      { label: 'Epik',        color: '#c96bff', window: 1.0,  minPower: 2 },
+  legendary: { label: 'Legendaris',  color: '#ffc23a', window: 0.85, minPower: 3 },
+  divine:    { label: 'Ilahi',       color: '#7df9ff', window: 0.8,  minPower: 3 },
+  exalted:   { label: 'Agung',       color: '#ff6b4a', window: 0.75, minPower: 4 },
+  limited:   { label: 'Terbatas',    color: '#3df5c8', window: 0.85, minPower: 4 },
+  genesis:   { label: 'Genesis',     color: '#ffffff', window: 0.7,  minPower: 4 },
+  hidden:    { label: 'Tersembunyi', color: '#ff2e88', window: 0.65, minPower: 4 }
 };
 function reelOf(r) { return REEL[r] || REEL.legendary; }
 function xpBase(r) { return XP_FISH[r] || XP_FISH.legendary; }
@@ -72,33 +80,41 @@ var FISH = [
   { id: 'tuna', kg: [20, 180],     name: 'Tuna Sirip Kuning',  rarity: 'epic',      price: 520,  c: ['#27457c', '#dfe6ee', '#ffd400'],
     desc: 'Raksasa laut dalam bersirip kuning terang. Kebanggaan setiap nelayan.' },
   { id: 'naga', kg: [40, 400],     name: 'Naga Laut Pelangi',  rarity: 'legendary', price: 2500, c: ['#ff5ea8', '#fff4ff', '#7a5cff'], rainbow: true,
-    desc: 'Makhluk legendaris bersisik pelangi. Konon hanya muncul bagi nelayan yang sabar.' }
+    desc: 'Makhluk legendaris bersisik pelangi. Konon hanya muncul bagi nelayan yang sabar.' },
+  { id: 'fajar', kg: [60, 500],    name: 'Ikan Cahaya Fajar',  rarity: 'divine',    price: 12000,   c: ['#ffe27a', '#fffbe0', '#e0a82e'], stripe: '#ffffff',
+    desc: 'Bersinar seperti fajar di dasar laut. Nelayan tua menyebutnya berkah, bukan tangkapan.' },
+  { id: 'rajakarang', kg: [150, 1200], name: 'Raja Karang Merah', rarity: 'exalted', price: 60000,   c: ['#b3122e', '#ff8a7a', '#6e0818'], dots: '#ffd0c0',
+    desc: 'Penguasa karang dalam yang bersisik merah darah. Jarang ada yang melihatnya dua kali.' },
+  { id: 'awalmula', kg: [300, 2500], name: 'Ikan Awal Mula',    rarity: 'genesis',   price: 350000,  c: ['#6a5cff', '#eae6ff', '#2a1f8f'], stripe: '#ffffff', dots: '#b9f5ff',
+    desc: 'Konon sudah ada sejak laut pertama terbentuk. Sisiknya memantulkan cahaya yang tidak ada di langit.' },
+  { id: 'bayangan', kg: [500, 5000], name: 'Bayangan Samudra',  rarity: 'hidden',    price: 2000000, c: ['#1d1f3a', '#5b5f8f', '#0a0b18'], dots: '#7ee7ff',
+    desc: 'Nyaris tak terlihat. Banyak yang bersumpah ia hanya dongeng.' }
 ];
 var FISH_BY_ID = {};
 FISH.forEach(function (f) { FISH_BY_ID[f.id] = f; });
 
 /* ---------- Joran (level + Coins), Skill (poin dari level), Mutasi ikan ---------- */
-/* power = tenaga tarik (bar tarik lebih mudah penuh, ikan lebih lambat melawan) DAN batas rarity yang bisa muncul (lihat RARITY.minPower);
-   luck = bonus peluang ikan langka (skala 0-130). Dua joran boleh punya power sama tapi luck berbeda. */
+/* power = tenaga tarik (bar tarik lebih mudah penuh, ikan lebih lambat melawan) DAN syarat ikan (ikan rarity tertentu hanya muncul bila tenaga joran >= RARITY.minPower);
+   luck = bonus Hoki dalam PERSEN (Hoki dasar 100%, mis. 40 = +40%). Dua joran boleh punya power sama tapi luck berbeda. */
 var RODS = [
   { id: 'kayu', name: 'Joran Kayu Pemula', lv: 1, price: 0, power: 1, luck: 0, accent: '#e0b06a', style: {},
     desc: 'Joran kayu sederhana. Cukup untuk belajar memancing di dermaga.' },
-  { id: 'bambu', name: 'Joran Bambu Tua', lv: 5, price: 600, power: 1, luck: 20, accent: '#d6cf6a',
+  { id: 'bambu', name: 'Joran Bambu Tua', lv: 5, price: 600, power: 1, luck: 40, accent: '#d6cf6a',
     style: { b0: '#b8b04a', b1: '#efe58a', b2: '#6f6a24', b3: '#9a933a', b4: '#857f2c', w0: '#3f5a2a', w1: '#567a38', w2: '#6e9648', wh0: '#7fae58', wh1: '#a5d070', wd: '#22361a', wm: '#2f4a20' },
     desc: 'Bambu pilihan yang diyakini membawa hoki. Tenaganya sama dengan joran kayu, tapi lebih beruntung.' },
-  { id: 'fiber', name: 'Joran Fiber Biru', lv: 10, price: 2200, power: 2, luck: 35, accent: '#59b6ff',
+  { id: 'fiber', name: 'Joran Fiber Biru', lv: 10, price: 2200, power: 2, luck: 70, accent: '#59b6ff',
     style: { b0: '#2f7bd0', b1: '#7fc0ff', b2: '#173f78', b3: '#2468b8', b4: '#1d559a', w0: '#3a3f4a', w1: '#505766', w2: '#686f80', wh0: '#7b8396', wh1: '#a0a8ba', wd: '#1b1e25', wm: '#2a2e38',
       m0: '#cfd6e2', m1: '#ffffff', m2: '#7f8798', m3: '#aab2c2', r0: '#c4cbd8', r1: '#8f98ab', r2: '#7a8396', r3: '#eef2fa', r4: '#5b6479', r5: '#9aa3b6', r6: '#dfe5f0', r7: '#6a7388' },
     desc: 'Serat fiber ringan dan lentur. Tarikannya lebih kuat dari joran kayu.' },
-  { id: 'karbon', name: 'Joran Karbon Hitam', lv: 18, price: 7500, power: 3, luck: 55, accent: '#ff6b6b',
+  { id: 'karbon', name: 'Joran Karbon Hitam', lv: 18, price: 7500, power: 3, luck: 110, accent: '#ff6b6b',
     style: { b0: '#2d3037', b1: '#6c7280', b2: '#121318', b3: '#23262c', b4: '#1b1d22', w0: '#7a1f1f', w1: '#a02828', w2: '#c23a3a', wh0: '#d85a5a', wh1: '#f08a8a', wd: '#4a1010', wm: '#5e1818',
       m0: '#c9ccd6', m1: '#ffffff', m2: '#6f7384', m3: '#a3a7b6', r0: '#4a4f5c', r1: '#2b2e38', r2: '#383c48', r3: '#9aa0b0', r4: '#1c1e26', r5: '#6a6f7e', r6: '#b0b5c4', r7: '#3c404c' },
     desc: 'Kuat, kaku, dan peka terhadap gigitan. Pilihan nelayan berpengalaman.' },
-  { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 90, accent: '#6fe3d2',
+  { id: 'titan', name: 'Joran Titanium Laut', lv: 28, price: 20000, power: 3, luck: 180, accent: '#6fe3d2',
     style: { b0: '#5fa8b8', b1: '#bff0f8', b2: '#2a5f70', b3: '#4a8fa0', b4: '#3a7788', w0: '#2a3a48', w1: '#3c5266', w2: '#506a82', wh0: '#6a88a4', wh1: '#8fb0cc', wd: '#141e28', wm: '#1e2c3a',
       m0: '#e6e8f0', m1: '#ffffff', m2: '#8a90a2', m3: '#c0c5d4', r0: '#9fe6f0', r1: '#4aa0b4', r2: '#62bcd0', r3: '#e6fcff', r4: '#2f7488', r5: '#bfeaf2', r6: '#f2feff', r7: '#4a8fa0' },
     desc: 'Tenaga sama seperti joran karbon, tetapi diberkahi hoki jauh lebih besar.' },
-  { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 130, accent: '#d28cff',
+  { id: 'naga', name: 'Joran Naga Pelangi', lv: 40, price: 60000, power: 4, luck: 260, accent: '#d28cff',
     style: { b0: '#b03ad0', b1: '#f08aff', b2: '#5a1a78', b3: '#9a2cba', b4: '#7e2298', w0: '#3a1a5a', w1: '#552a80', w2: '#6e3ca0', wh0: '#8a58c0', wh1: '#b088e0', wd: '#20103a', wm: '#2c164a',
       m0: '#ffd34a', m1: '#fff7b0', m2: '#b8860b', m3: '#e6b422', r0: '#ffd34a', r1: '#b8860b', r2: '#e6b422', r3: '#fff7b0', r4: '#7a5a08', r5: '#ffe27a', r6: '#fff2b0', r7: '#9a7410' },
     desc: 'Joran legendaris bersisik pelangi. Tenaga tertinggi dan keberuntungan terbaik.' }
@@ -118,40 +134,39 @@ MUTS.forEach(function (m) { MUT_BY_ID[m.id] = m; });
 function mutMult(id) { return id && MUT_BY_ID[id] ? MUT_BY_ID[id].mult : 1; }
 function mutTag(id) { return id && MUT_BY_ID[id] ? '<span style="color:' + MUT_BY_ID[id].color + ';text-shadow:0 0 6px ' + MUT_BY_ID[id].color + '">[' + MUT_BY_ID[id].name + ']</span> ' : ''; }
 
-var SKILL_COST = [1, 2, 3, 4, 5, 6];                 // poin untuk tingkat 1..6 (1 poin didapat tiap naik level; satu jalur penuh = 21 poin)
 var SKILL_ORDER = ['luck', 'mut', 'big', 'swift'];
 function fmtP(v) { return String(v).replace('.', ','); }
+function r1(v) { return Math.round(v * 10) / 10; }
+/* Tiap skill: level mulai 1, tanpa batas, naik 1 level = 1 poin (1 poin didapat tiap naik level pemain). Nilai efek dihitung fishing-core (kurva di gameAdapter.js). */
 var SKILLS = {
-  luck:  { name: 'Hoki', color: '#6fe36f', val: [0, 6, 13, 21, 31, 44, 60],
-    perks: ['Jimat Kecil', 'Hari Cerah', 'Angin Baik', 'Berkah Laut', 'Bintang Nelayan', 'Dewi Fortuna'],
-    eff: function (v) { return 'Hoki +' + v; }, desc: 'Menambah peluang ikan langka (dijumlah dengan hoki joran dan umpan; makin tinggi, tambahannya makin kecil).' },
-  mut:   { name: 'Mutasi', color: '#d28cff', val: [0, 0.5, 1, 1.6, 2.3, 3.1, 4],
-    perks: ['Air Aneh', 'Arus Misterius', 'Cahaya Ganjil', 'Pasang Kosmik', 'Gelombang Gen', 'Evolusi'],
-    eff: function (v) { return 'Mutasi +' + fmtP(v) + '%'; }, desc: 'Menambah peluang ikan bermutasi (dasar 0,5%). Harga mutasi berlipat.' },
-  big:   { name: 'Ikan Besar', color: '#ff9a4a', val: [0, 2, 5, 8, 12, 16, 20],
-    perks: ['Umpan Gemuk', 'Lengan Kuat', 'Mata Elang', 'Kail Raksasa', 'Pemburu Raksasa', 'Raja Samudra'],
-    eff: function (v) { return 'Jumbo +' + v + '%'; }, desc: 'Menambah peluang ikan jumbo (berat mendekati batas atas jenisnya; dasar 0,5%).' },
-  swift: { name: 'Tangkas', color: '#59b6ff', val: [1, 1.04, 1.08, 1.12, 1.16, 1.2, 1.25], wait: [1, 0.96, 0.92, 0.88, 0.84, 0.8, 0.75],
-    perks: ['Tangan Cekatan', 'Refleks', 'Sabar', 'Fokus', 'Insting', 'Kilat'],
-    eff: function (v, i) { return 'Tarik +' + Math.round((v - 1) * 100) + '% | Tunggu -' + Math.round((1 - SKILLS.swift.wait[i]) * 100) + '%'; },
-    desc: 'Ikan menggigit sedikit lebih cepat dan waktu menarik sedikit lebih longgar.' }
+  luck:  { name: 'Hoki', color: '#6fe36f',
+    eff: function (lv) { return 'Hoki +' + fmtP(r1(FCA.skillBonus('luck', lv))) + '%'; },
+    desc: 'Menambah Hoki total (dasar 100%). Tiap tingkat +10%. Makin tinggi Hoki, makin besar peluang ikan langka; efeknya diredam otomatis di Hoki yang sangat tinggi.' },
+  mut:   { name: 'Mutasi', color: '#d28cff',
+    eff: function (lv) { return 'Mutasi +' + fmtP(r1(FCA.skillBonus('mut', lv))) + '%'; },
+    desc: 'Menambah peluang ikan bermutasi (dasar 0,5%). Harga mutasi berlipat.' },
+  big:   { name: 'Ikan Besar', color: '#ff9a4a',
+    eff: function (lv) { return 'Jumbo +' + fmtP(r1(FCA.skillBonus('big', lv))) + '%'; },
+    desc: 'Menambah peluang ikan jumbo (berat mendekati batas atas jenisnya; dasar 0,5%).' },
+  swift: { name: 'Tangkas', color: '#59b6ff',
+    eff: function (lv) { var v = FCA.skillBonus('swift', lv); return 'Tunggu -' + Math.round(v) + '% | Tarik +' + Math.round(v) + '%'; },
+    desc: 'Ikan menggigit lebih cepat (maks. -60% waktu tunggu) dan waktu menarik sedikit lebih longgar. Tidak memengaruhi peluang rarity.' }
 };
-function skillTier(k) { return Math.max(0, Math.min(6, (Save.data.skills && Save.data.skills[k]) | 0)); }
-function skillVal(k) { return SKILLS[k].val[skillTier(k)]; }
-function skillSpent() { var s = 0; SKILL_ORDER.forEach(function (k) { for (var t = 0; t < skillTier(k); t++) s += SKILL_COST[t]; }); return s; }
+function skillLevel(k) { var v = Save.data.skillLv && Save.data.skillLv[k]; return Math.max(1, Math.floor(+v || 1)); }
+function skillSpent() { var s = 0; SKILL_ORDER.forEach(function (k) { s += skillLevel(k) - 1; }); return s; }
 function skillPoints() { return Math.max(0, levelInfo(Save.data.xp).level - 1 - skillSpent()); }
 function curRod() { return RODS_BY_ID[Save.data.rod] || RODS[0]; }
 
 /* ---------- Umpan: dibeli per paket, terpakai 1 per lemparan, efeknya dijumlah dengan joran dan skill ---------- */
 var BAIT_PACK = 10, BAIT_MAX = 999;
 var BAITS = [
-  { id: 'cacing',    name: 'Cacing Tanah',     lv: 1,  price: 100,   luck: 5,  mut: 0,   big: 0, accent: '#e58a9a', desc: 'Umpan paling murah dan umum. Sedikit menambah hoki.' },
-  { id: 'udang',     name: 'Udang Segar',      lv: 4,  price: 400,   luck: 12, mut: 0,   big: 0, accent: '#ff9a5a', desc: 'Ikan karang suka sekali udang segar. Hoki lebih baik dari cacing.' },
+  { id: 'cacing',    name: 'Cacing Tanah',     lv: 1,  price: 100,   luck: 10,  mut: 0,   big: 0, accent: '#e58a9a', desc: 'Umpan paling murah dan umum. Sedikit menambah hoki.' },
+  { id: 'udang',     name: 'Udang Segar',      lv: 4,  price: 400,   luck: 24, mut: 0,   big: 0, accent: '#ff9a5a', desc: 'Ikan karang suka sekali udang segar. Hoki lebih baik dari cacing.' },
   { id: 'larva',     name: 'Larva Cahaya',     lv: 8,  price: 1200,  luck: 0,  mut: 1.5, big: 0, accent: '#c8ff6a', desc: 'Larva berpendar aneh yang memancing ikan bermutasi.' },
-  { id: 'terib',     name: 'Umpan Teri Besar', lv: 12, price: 1500,  luck: 10, mut: 0,   big: 5, accent: '#cfe3f0', desc: 'Teri besar mengundang ikan bertubuh besar.' },
-  { id: 'gelombang', name: 'Umpan Gelombang',  lv: 16, price: 3500,  luck: 20, mut: 1,   big: 0, accent: '#4aa8ff', desc: 'Berdenyut mengikuti ombak. Menambah hoki dan sedikit peluang mutasi.' },
-  { id: 'emas',      name: 'Umpan Emas',       lv: 25, price: 9000,  luck: 35, mut: 2,   big: 5, accent: '#ffd34a', desc: 'Berkilau emas. Hoki besar, mutasi, dan ikan jumbo sekaligus.' },
-  { id: 'kosmik',    name: 'Umpan Kosmik',     lv: 40, price: 25000, luck: 50, mut: 4,   big: 0, accent: '#b48cff', desc: 'Umpan dari bintang jatuh. Hoki dan peluang mutasi tertinggi.' }
+  { id: 'terib',     name: 'Umpan Teri Besar', lv: 12, price: 1500,  luck: 20, mut: 0,   big: 5, accent: '#cfe3f0', desc: 'Teri besar mengundang ikan bertubuh besar.' },
+  { id: 'gelombang', name: 'Umpan Gelombang',  lv: 16, price: 3500,  luck: 40, mut: 1,   big: 0, accent: '#4aa8ff', desc: 'Berdenyut mengikuti ombak. Menambah hoki dan sedikit peluang mutasi.' },
+  { id: 'emas',      name: 'Umpan Emas',       lv: 25, price: 9000,  luck: 70, mut: 2,   big: 5, accent: '#ffd34a', desc: 'Berkilau emas. Hoki besar, mutasi, dan ikan jumbo sekaligus.' },
+  { id: 'kosmik',    name: 'Umpan Kosmik',     lv: 40, price: 25000, luck: 100, mut: 4,   big: 0, accent: '#b48cff', desc: 'Umpan dari bintang jatuh. Hoki dan peluang mutasi tertinggi.' }
 ];
 var BAITS_BY_ID = {};
 BAITS.forEach(function (b) { BAITS_BY_ID[b.id] = b; });
@@ -159,50 +174,40 @@ function baitCount(id) { return (Save.data.baits && Save.data.baits[id]) | 0; }
 function activeBait() { var b = BAITS_BY_ID[Save.data.bait]; return b && baitCount(b.id) > 0 ? b : null; }
 function baitSummary(b) {
   var t = [];
-  if (b.luck) t.push('Hoki +' + b.luck);
+  if (b.luck) t.push('Hoki +' + b.luck + '%');
   if (b.mut) t.push('Mutasi +' + fmtP(b.mut) + '%');
   if (b.big) t.push('Jumbo +' + b.big + '%');
   return t.join(' | ');
 }
 
-/* ---------- Luck -> peluang rarity ----------
-   Luck total = joran + skill + umpan (+ bonus lemparan: lempar penuh = 0, lemparan pendek malah mengurangi sampai -20).
-   Kurva makin lambat naiknya (diminishing). Luck 240 = maksimal => peluang p1 tiap rarity; luck 0 => p0. */
-var LUCK_REF = 240, LUCK_TAU = 150, CAST_LUCK = 20;
-function totalLuck(bait) {
-  if (bait === undefined) bait = activeBait();
-  return curRod().luck + skillVal('luck') + (bait ? bait.luck : 0);
+/* ---------- Luck, rarity, mutasi, ukuran: dihitung oleh fishing-core (fishing-core.js) ----------
+   Hoki dalam PERSEN (100% = faktor 1). Total = 100% + keahlian + joran + umpan + bonus lemparan (lempar penuh 0, pendek sampai -40%).
+   Peluang rarity: W = B x F^S dinormalkan; F dilunakkan soft cap (mulai Hoki 10.000%, mendekati maks pada 20.000%).
+   CATATAN: ini berjalan di browser (offline/single-player). Untuk multiplayer, pindahkan pemanggilan ini ke server. */
+if (typeof FishingCore === 'undefined') throw new Error('fishing-core.js belum dimuat (cek tag <script> di index.html)');
+var CAST_LUCK = 40, MUT_BASE = 0.5, JUMBO_BASE = 0.5;
+var fmtLuck = FishingCore.formatLuck;
+var FCA = FishingCore.createGameAdapter({
+  fish: FISH.map(function (f) { return { id: f.id, rarity: f.rarity, kg: f.kg, minPower: RARITY[f.rarity].minPower }; }),
+  mutations: MUTS.map(function (m) { return { id: m.id, weight: m.w }; }),
+  castLuck: CAST_LUCK, mutationBase: MUT_BASE, jumboBase: JUMBO_BASE
+});
+function fishState(bait, cp) {
+  var r = curRod();
+  return { rod: { power: r.power, luck: r.luck }, bait: bait ? { luck: bait.luck, mut: bait.mut, big: bait.big } : null,
+    skills: { luck: skillLevel('luck'), mut: skillLevel('mut'), big: skillLevel('big'), swift: skillLevel('swift') }, castPower: cp === undefined ? 1 : cp };
 }
-function luckG(L) {
-  var g = (1 - Math.exp(-L / LUCK_TAU)) / (1 - Math.exp(-LUCK_REF / LUCK_TAU));
-  return Math.max(-0.35, Math.min(1, g));
-}
-function rarityChances(L, power) {                    // [{r, p}] p = 0..1, hanya rarity yang boleh muncul untuk power joran ini
-  var g = luckG(L), list = [], tot = 0;
-  RARITY_ORDER.forEach(function (k) {
-    var R = RARITY[k], ok = power >= R.minPower && FISH.some(function (f) { return f.rarity === k; });
-    var w = ok ? Math.pow(R.p0, 1 - g) * Math.pow(R.p1, g) : 0;
-    list.push({ r: k, w: w }); tot += w;
-  });
-  if (tot <= 0) { list[0].w = 1; tot = 1; }
-  return list.map(function (e) { return { r: e.r, p: e.w / tot }; });
-}
-var MUT_BASE = 0.5, JUMBO_BASE = 0.5;                 // peluang dasar (%)
-function mutChance(bait) { if (bait === undefined) bait = activeBait(); return MUT_BASE + skillVal('mut') + (bait ? bait.mut : 0); }
-function jumboChance(bait) { if (bait === undefined) bait = activeBait(); return JUMBO_BASE + skillVal('big') + (bait ? bait.big : 0); }
-
-function rollMut(bait) {                             // null = ikan normal
-  if (bait === undefined) bait = activeBait();
-  if (Math.random() * 100 >= mutChance(bait)) return null;
-  var t = Math.min(8, skillTier('mut') + (bait ? Math.round(bait.mut) : 0)), ws = MUTS.map(function (m, i) { return m.w * (1 + t * 0.12 * i); }), tot = 0, i;
-  ws.forEach(function (v) { tot += v; });
-  var r = Math.random() * tot;
-  for (i = 0; i < MUTS.length; i++) { r -= ws[i]; if (r <= 0) return MUTS[i].id; }
-  return MUTS[0].id;
+function totalLuck(bait, cp) { return FCA.luckInfo(fishState(bait === undefined ? activeBait() : bait, cp)).totalLuck; }
+function rarityChances(bait, cp) { return FCA.rarityChances(fishState(bait === undefined ? activeBait() : bait, cp)); }   // [{r, p}] p = 0..1
+function mutChance(bait) { return FCA.mutationChance(fishState(bait === undefined ? activeBait() : bait)); }
+function jumboChance(bait) { return FCA.jumboChance(fishState(bait === undefined ? activeBait() : bait)); }
+function rollCatch(bait, cp) {                        // ketersediaan -> rarity -> ikan -> mutasi -> ukuran
+  var res = FCA.rollCatch(fishState(bait, cp)), ok = res.status === 'ok', def = ok ? FISH_BY_ID[res.fishId] : FISH[0];
+  return { def: def, kg: ok ? res.kg : defaultKg(def), mut: ok ? res.mutation : null };
 }
 
 /* ---------- Level & XP pemain ---------- */
-var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500 };   // XP dasar per ikan (dikali faktor berat)
+var XP_FISH = { common: 10, uncommon: 25, rare: 60, epic: 150, legendary: 500, divine: 1200, exalted: 3000, limited: 2000, genesis: 8000, hidden: 25000 };   // XP dasar per ikan (dikali faktor berat)
 var XP_FIRST = 20;                                  // bonus XP untuk jenis ikan yang baru pertama kali ditangkap
 function xpToNext(l) { return Math.round(80 * Math.pow(l, 1.4)); }   // XP dari level l ke l+1 (Lv1->2 = 80, Lv10->11 = 2.010, Lv50->51 = 19.127); ubah angka 80 / 1.4 untuk atur kesulitan
 function levelInfo(xp) {                            // level tidak terbatas
@@ -281,7 +286,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
 function cleanMuts(arr, slots) { var r = [], i; for (i = 0; i < NSLOT; i++) { var v = Array.isArray(arr) ? arr[i] : null; r.push(slots[i] && v && MUT_BY_ID[v] ? v : null); } return r; }
 function blankData() {
   return { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), muts: blankKgs(), record: {}, zoom: ZOOM_MAX,
-    rod: 'kayu', rods: ['kayu'], skills: { luck: 0, mut: 0, big: 0, swift: 0 }, baits: {}, bait: null };
+    rod: 'kayu', rods: ['kayu'], skillLv: { luck: 1, mut: 1, big: 1, swift: 1 }, baits: {}, bait: null };
 }
 var Save = {
   data: blankData(),
@@ -301,8 +306,9 @@ var Save = {
       if (ro.indexOf('kayu') < 0) ro.unshift('kayu');
       this.data.rods = ro;
       this.data.rod = (RODS_BY_ID[d.rod] && ro.indexOf(d.rod) >= 0) ? d.rod : 'kayu';
-      var sk = d.skills && typeof d.skills === 'object' ? d.skills : {};
-      this.data.skills = { luck: Math.max(0, Math.min(6, sk.luck | 0)), mut: Math.max(0, Math.min(6, sk.mut | 0)), big: Math.max(0, Math.min(6, sk.big | 0)), swift: Math.max(0, Math.min(6, sk.swift | 0)) };
+      var sl = d.skillLv && typeof d.skillLv === 'object' ? d.skillLv : null, old = d.skills && typeof d.skills === 'object' ? d.skills : {}, cum = [0, 1, 3, 6, 10, 15, 21];
+      var lvOf = function (k) { return sl ? Math.max(1, Math.floor(+sl[k]) || 1) : 1 + cum[Math.max(0, Math.min(6, old[k] | 0))]; };   // save lama (tingkat 0-6): level = 1 + poin yang sudah dipakai
+      this.data.skillLv = { luck: lvOf('luck'), mut: lvOf('mut'), big: lvOf('big'), swift: lvOf('swift') };
       var bt = {};
       if (d.baits && typeof d.baits === 'object') BAITS.forEach(function (b) { var n = Math.floor(+d.baits[b.id] || 0); if (n > 0) bt[b.id] = Math.min(BAIT_MAX, n); });
       this.data.baits = bt;
@@ -1857,7 +1863,7 @@ var Hotbar = {
     }
     var sid = heldFishId();
     var abn = activeBait();
-    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Tenaga ' + curRod().power + ' | Hoki +' + totalLuck() + ' | Umpan: ' + (abn ? abn.name + ' x' + baitCount(abn.id) : 'tidak ada') + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
+    this.name.textContent = Equip.sel === 0 ? curRod().name + '  (Tenaga ' + curRod().power + ' | Hoki ' + fmtLuck(totalLuck()) + ' | Umpan: ' + (abn ? abn.name + ' x' + baitCount(abn.id) : 'tidak ada') + ')' : (sid ? (Save.data.muts[Equip.sel - 1] ? '[' + MUT_BY_ID[Save.data.muts[Equip.sel - 1]].name + '] ' : '') + FISH_BY_ID[sid].name + ' - ' + fmtKg(Save.data.kgs[Equip.sel - 1]) : '');
   },
   canSwitch: function () {
     var st = scene && scene.fish ? scene.fish.state : 'idle';
@@ -1880,7 +1886,7 @@ function equipRod(id) {
   if (!ownsRod(id) || Save.data.rod === id) return true;
   if (!Hotbar.canSwitch()) { UI.toast('<div>Selesaikan memancing dulu</div>', '#5fe0e6', false, 1100); return false; }
   Save.data.rod = id; Save.write(); Hotbar.render();
-  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Tenaga ' + RODS_BY_ID[id].power + ' | Hoki +' + RODS_BY_ID[id].luck + '</small><small>Kelangkaan tertinggi: ' + RARITY[maxRarity(RODS_BY_ID[id].power)].label + '</small></div>', RODS_BY_ID[id].accent, false, 1800);
+  UI.toast('<div>' + RODS_BY_ID[id].name + ' dipakai<small>Tenaga ' + RODS_BY_ID[id].power + ' | Hoki +' + RODS_BY_ID[id].luck + '%</small><small>Kelangkaan tertinggi: ' + RARITY[maxRarity(RODS_BY_ID[id].power)].label + '</small></div>', RODS_BY_ID[id].accent, false, 1800);
   return true;
 }
 function cycleRod() {
@@ -1908,7 +1914,7 @@ function renderRodShop() {
     var row = document.createElement('div');
     row.className = 'row' + (rodSel === r.id ? ' sel' : '') + (lock ? ' locked' : '');
     row.style.setProperty('--rc', r.accent);
-    row.innerHTML = '<img class="ficon rodi" src="' + ICON_RODS[r.id] + '" alt=""><div class="fname"><b>' + r.name + '</b><span>Tenaga ' + r.power + ' | Hoki +' + r.luck + '</span></div>' +
+    row.innerHTML = '<img class="ficon rodi" src="' + ICON_RODS[r.id] + '" alt=""><div class="fname"><b>' + r.name + '</b><span>Tenaga ' + r.power + ' | Hoki +' + r.luck + '%</span></div>' +
       '<div class="cnt">' + (eq ? 'Dipakai' : own ? 'Dimiliki' : lock ? 'Tk ' + r.lv : fmt(r.price)) + (!own && !lock ? '<small>Koin</small>' : '') + '</div>';
     row.addEventListener('click', function () { rodSel = r.id; renderShop(); });
     list.appendChild(row);
@@ -1921,7 +1927,7 @@ function renderRodShop() {
   detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big rodbig" src="' + ICON_RODS[r.id] + '" alt=""><h3>' + r.name + '</h3>' +
     '<div class="tag" style="color:' + r.accent + '">' + (lock && !own ? 'Terkunci: butuh Tingkat ' + r.lv : 'Syarat Tingkat ' + r.lv) + '</div>' +
     '<div class="stat"><span>Tenaga tarik</span><b>' + r.power + (r !== cur ? dif(r.power, cur.power) : '') + '</b></div>' +
-    '<div class="stat"><span>Hoki joran</span><b>+' + r.luck + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
+    '<div class="stat"><span>Hoki joran</span><b>+' + r.luck + '%' + (r !== cur ? dif(r.luck, cur.luck) : '') + '</b></div>' +
     '<div class="stat"><span>Kelangkaan tertinggi</span><b>' + rarTag(maxRarity(r.power)) + '</b></div>' +
     '<div class="stat"><span>Harga</span><b>' + (r.price ? fmt(r.price) + ' Koin' : 'Gratis') + '</b></div>' +
     '<p>' + r.desc + '</p><div class="btns">' + act + '</div>';
@@ -1971,7 +1977,7 @@ function renderBaitShop() {
   var buyDis = function (packs) { return (lock || d.coins < b.price * packs || n + BAIT_PACK * packs > BAIT_MAX) ? ' disabled' : ''; };
   detail.innerHTML = '<div class="npcSay">' + npcLine + '</div><img class="big baitbig" src="' + ICON_BAITS[b.id] + '" alt=""><h3>' + b.name + '</h3>' +
     '<div class="tag" style="color:' + b.accent + '">' + (lock ? 'Terkunci: butuh Tingkat ' + b.lv : 'Syarat Tingkat ' + b.lv) + '</div>' +
-    '<div class="stat"><span>Hoki</span><b>' + (b.luck ? '+' + b.luck : '-') + '</b></div>' +
+    '<div class="stat"><span>Hoki</span><b>' + (b.luck ? '+' + b.luck + '%' : '-') + '</b></div>' +
     '<div class="stat"><span>Peluang mutasi</span><b>' + (b.mut ? '+' + fmtP(b.mut) + '%' : '-') + '</b></div>' +
     '<div class="stat"><span>Peluang ikan jumbo</span><b>' + (b.big ? '+' + b.big + '%' : '-') + '</b></div>' +
     '<div class="stat"><span>Dimiliki</span><b>' + n + '</b></div>' +
@@ -1985,32 +1991,33 @@ function renderBaitShop() {
   $('shopSummary').textContent = 'Koin kamu: ' + fmt(d.coins) + '  |  Tingkat ' + lv + '  |  Umpan aktif: ' + (cur ? cur.name + ' x' + baitCount(cur.id) : 'tidak ada');
 }
 
-/* ---------- Panel Skill: 4 jalur, 6 tingkat, dibuka dengan poin ---------- */
+/* ---------- Panel Skill: 4 jalur, level tanpa batas, 1 poin per level ---------- */
+function fmtChance(p) { return p >= 0.0001 ? fmtPct(p * 100) : '1 : ' + fmt(Math.round(1 / p)); }
 function renderSkills() {
   var pts = skillPoints(), h = '';
   SKILL_ORDER.forEach(function (k) {
-    var S = SKILLS[k], tier = skillTier(k), t;
-    h += '<div class="skCol" style="--sc:' + S.color + '"><div class="skHead"><b>' + S.name + '</b><span>' + S.eff(S.val[tier], tier) + '</span><small>' + S.desc + '</small></div>';
-    if (tier >= 6) h += '<button class="btn small" type="button" disabled>MAKSIMAL</button>';
-    else h += '<button class="btn small skBuy" type="button" data-k="' + k + '"' + (pts < SKILL_COST[tier] ? ' disabled' : '') + '>Tingkatkan (' + SKILL_COST[tier] + ' poin)</button>';
+    var S = SKILLS[k], lv = skillLevel(k);
+    h += '<div class="skCol" style="--sc:' + S.color + '"><div class="skHead"><b>' + S.name + ' - Lv. ' + fmt(lv) + '</b><span>' + S.eff(lv) + '</span><small>' + S.desc + '</small></div>';
+    h += '<button class="btn small skBuy" type="button" data-k="' + k + '" data-n="1"' + (pts < 1 ? ' disabled' : '') + '>Tingkatkan (1 poin)</button>';
+    h += '<button class="btn small skBuy" type="button" data-k="' + k + '" data-n="10"' + (pts < 10 ? ' disabled' : '') + '>+10 tingkat (10 poin)</button>';
     h += '<div class="skNodes">';
-    for (t = 1; t <= 6; t++) {
-      var st = t <= tier ? 'done' : (t === tier + 1 ? 'next' : 'lock');
-      h += '<div class="skNode ' + st + '"><i>' + t + '</i><div><b>' + S.perks[t - 1] + '</b><span>' + S.eff(S.val[t], t) + '</span></div><em>' + SKILL_COST[t - 1] + '</em></div>';
-    }
+    [[lv, 'done', 'Sekarang', ''], [lv + 1, 'next', 'Berikutnya', 1], [lv + 10, 'lock', '+10 tingkat', 10]].forEach(function (n) {
+      h += '<div class="skNode ' + n[1] + '"><i>' + fmt(n[0]) + '</i><div><b>' + n[2] + '</b><span>' + S.eff(n[0]) + '</span></div><em>' + n[3] + '</em></div>';
+    });
     h += '</div></div>';
   });
   $('skillCols').innerHTML = h;
-  $('skillPts').textContent = 'Poin keahlian: ' + pts;
-  var ab = activeBait(), L = totalLuck(), ch = rarityChances(L, curRod().power);
-  $('skillInfo').innerHTML = 'Hoki total +' + L + ' (joran +' + curRod().luck + ', keahlian +' + skillVal('luck') + ', umpan +' + (ab ? ab.luck : 0) + ') | Tenaga ' + curRod().power +
+  $('skillPts').textContent = 'Poin keahlian: ' + fmt(pts);
+  var ab = activeBait(), li = FCA.luckInfo(fishState(ab, 1)), ch = rarityChances(ab, 1);
+  $('skillInfo').innerHTML = 'Hoki total ' + fmtLuck(li.totalLuck) + ' (dasar 100%, joran +' + curRod().luck + '%, keahlian +' + fmtP(r1(FCA.skillBonus('luck', skillLevel('luck')))) + '%, umpan +' + (ab ? ab.luck : 0) + '%)' +
+    ' | Efektif x' + fmtP(Math.round(li.factor * 100) / 100) + ' | Tenaga ' + curRod().power +
     ' | Mutasi ' + fmtPct(mutChance()) + ' | Jumbo ' + fmtPct(jumboChance()) + '<br>Peluang lempar penuh: ' +
-    ch.map(function (e) { return e.p > 0 ? '<span style="color:' + RARITY[e.r].color + '">' + RARITY[e.r].label + ' ' + fmtPct(e.p * 100) + '</span>' : ''; }).filter(Boolean).join(' | ');
+    ch.map(function (e) { return e.p > 0 ? '<span style="color:' + RARITY[e.r].color + '">' + RARITY[e.r].label + ' ' + fmtChance(e.p) + '</span>' : ''; }).filter(Boolean).join(' | ');
 }
-function buySkill(k) {
-  var tier = skillTier(k);
-  if (!SKILLS[k] || tier >= 6 || skillPoints() < SKILL_COST[tier]) return;
-  Save.data.skills[k] = tier + 1; Save.write();
+function buySkill(k, n) {
+  n = Math.max(1, n | 0);
+  if (!SKILLS[k] || skillPoints() < n) return;
+  Save.data.skillLv[k] = skillLevel(k) + n; Save.write();
   UI.setLevel(false); renderSkills();
 }
 
@@ -2329,7 +2336,7 @@ function initButtons() {
   press('btnSkill', function () { Modal.toggle('skill'); });
   press('btnHelp', function () { Modal.toggle('help'); });
   press('btnBook', function () { Modal.toggle('book'); });
-  $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k')); });
+  $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k'), +b.getAttribute('data-n') || 1); });
   Array.prototype.forEach.call(document.querySelectorAll('button'), function (b) { b.addEventListener('mousedown', function (e) { e.preventDefault(); }); });   // tombol tidak menyimpan fokus => Spasi tidak menekan ulang tombol
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
   $('tabCol').addEventListener('click', function () { invTab = 'col'; renderInventory(); });
@@ -2392,13 +2399,6 @@ function readMove() {
 function snapDir(dx, dy) {
   var i = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return ((i % 8) + 8) % 8;
-}
-function rollFish(L, power) {                        // L = luck total efektif, power = power joran (membatasi rarity yang boleh muncul)
-  if (power === undefined) power = curRod().power;
-  var ch = rarityChances(L || 0, power), r = Math.random(), pick = ch[0].r, i;
-  for (i = 0; i < ch.length; i++) { r -= ch[i].p; if (r <= 0) { pick = ch[i].r; break; } }
-  var pool = FISH.filter(function (f) { return f.rarity === pick; });
-  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function createSceneClass() {
@@ -2755,11 +2755,9 @@ function createSceneClass() {
     }
     startBite() {
       var f = this.fish, bait = f.baitId ? BAITS_BY_ID[f.baitId] : null, cp = f.castPower || 0;
-      var L = totalLuck(bait) + (cp - 1) * CAST_LUCK;     // luck joran + skill + umpan; lempar penuh = 0, lemparan pendek mengurangi
-      f.def = rollFish(L, curRod().power);                 // rarity di atas batas power joran tidak pernah muncul
-      f.kg = rollKg(f.def, cp, jumboChance(bait));
-      f.mut = rollMut(bait);
-      f.window = RARITY[f.def.rarity].window * SKILLS.swift.val[skillTier('swift')];
+      var rc = rollCatch(bait, cp);                         // fishing-core: ikan di atas batas tenaga joran tidak pernah muncul
+      f.def = rc.def; f.kg = rc.kg; f.mut = rc.mut;
+      f.window = RARITY[f.def.rarity].window * FCA.reelWindowMultiplier(fishState(bait, cp));
       f.state = 'bite'; f.t = 0;
       this.splash(f.bx, f.by);
       this.bang.setVisible(true);
@@ -2939,7 +2937,7 @@ function createSceneClass() {
           by = f.launch.y + (g.ty - f.launch.y) * pr - Math.sin(pr * Math.PI) * (30 + 55 * (f.castPower || 0));
           sag = 4;
           if (pr >= 1) {
-            f.state = 'waiting'; f.t = 0; f.wait = (2 + Math.random() * 3.5) * SKILLS.swift.wait[skillTier('swift')];
+            f.state = 'waiting'; f.t = 0; f.wait = FCA.biteDelay(2 + Math.random() * 3.5, fishState(f.baitId ? BAITS_BY_ID[f.baitId] : null, f.castPower || 0));
             this.splash(g.tx, g.ty);
           }
         }
@@ -3042,11 +3040,11 @@ function start() {
 }
 
 window.__TF = {
-  rarityChances: rarityChances, mutChance: mutChance, jumboChance: jumboChance, luckG: luckG, BAITS: BAITS, buyBait: buyBait, cycleBait: cycleBait, setBait: setBait, activeBait: activeBait, maxRarity: maxRarity, SKILL_COST: SKILL_COST, MUTS: MUTS, renderSkills: renderSkills,
-  Save: Save, levelInfo: levelInfo, skillPoints: skillPoints, buySkill: buySkill, buyRod: buyRod, equipRod: equipRod, rollMut: rollMut, totalLuck: totalLuck, slotPrice: slotPrice, renderShop: renderShop, setShopTab: function (t) { shopTab = t; }, RODS: RODS, SKILLS: SKILLS,
+  rarityChances: rarityChances, mutChance: mutChance, jumboChance: jumboChance, FCA: FCA, skillLevel: skillLevel, rollCatch: rollCatch, BAITS: BAITS, buyBait: buyBait, cycleBait: cycleBait, setBait: setBait, activeBait: activeBait, maxRarity: maxRarity, MUTS: MUTS, renderSkills: renderSkills,
+  Save: Save, levelInfo: levelInfo, skillPoints: skillPoints, buySkill: buySkill, buyRod: buyRod, equipRod: equipRod, totalLuck: totalLuck, slotPrice: slotPrice, renderShop: renderShop, setShopTab: function (t) { shopTab = t; }, RODS: RODS, SKILLS: SKILLS,
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
   makePalm: makePalm, makeBush: makeBush, makeRock: makeRock, makeStall: makeStall, makeWaves: makeWaves,
-  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, rollFish: rollFish, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp, priceOf: priceOf, xpOf: xpOf, rollKg: rollKg
+  makeFishCanvas: makeFishCanvas, Equip: Equip, Hotbar: Hotbar, addFishSlot: addFishSlot, freeSlots: freeSlots, sellFish: sellFish, sellEverything: sellEverything, renderInventory: renderInventory, Modal: Modal, syncInv: syncInv, getScene: function () { return scene; }, Ctl: Ctl, FISH: FISH, RARITY: RARITY, Save: Save, W: W, H: H, GRID: GRID, levelInfo: levelInfo, addXp: addXp, priceOf: priceOf, xpOf: xpOf, rollKg: rollKg
 };
 
 start();
