@@ -6,13 +6,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#06222c">
 <title>Tropical Fishing Adventure</title>
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 
 <div id="stage">
   <div id="game"></div>
   <div id="fx"></div>
+  <canvas id="wxRain"></canvas><div id="wxFog"></div><div id="wxAurora"></div><div id="wxFlash"></div>
 
   <div id="hud">
     <div id="coinBox"><span class="coinIcon"></span><span id="coinText">0</span></div>
@@ -20,6 +21,9 @@
       <span id="lvBadge">1</span>
       <span class="lvTxt"><span id="lvName">Nelayan</span><span id="lvBar"><i></i></span></span>
     </button>
+
+    <div id="clockBox"><span id="clkIcon" class="sun"></span><b id="clkTime">12:00</b><span id="clkPeriod">Siang</span></div>
+    <div id="wxChip" hidden><b id="wxName"></b><span id="wxInfo"></span></div>
 
     <button id="btnBag" class="hudbtn" type="button">TAS <b id="bagCount">0</b></button>
     <button id="btnSkill" class="hudbtn" type="button">KEAHLIAN <b id="skillCount">0</b><small class="kb">K</small></button>
@@ -31,6 +35,11 @@
       </svg>
     </button>
     <button id="btnZin" class="hudbtn sq" type="button" aria-label="Zoom masuk">+</button>
+    <button id="btnSound" class="hudbtn sq" type="button" aria-label="Suara" data-m="0">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9v6h4l5 4V5L8 9z" fill="#fff"/><path class="w w1" d="M16 9.5a3.6 3.6 0 0 1 0 5"/><path class="w w2" d="M18.6 7a7 7 0 0 1 0 10"/><path class="slash" d="M4 4l16 16" stroke="#ff7b7b"/>
+      </svg><small id="sndLbl">SUARA</small>
+    </button>
     <button id="btnZout" class="hudbtn sq" type="button" aria-label="Zoom keluar">&minus;</button>
 
     <div id="banner"></div>
@@ -140,6 +149,7 @@
         <div><kbd>N</kbd><span>Buku ikan (daftar semua ikan di pulau)</span></div>
         <div><kbd>P</kbd><span>Profil &amp; tingkat</span></div>
         <div><kbd>+</kbd> <kbd>&minus;</kbd> / roda mouse<span>Perbesar / perkecil</span></div>
+        <div><kbd>M</kbd><span>Suara: semua / efek saja / senyap</span></div>
         <div><kbd>H</kbd> / <kbd>F1</kbd><span>Buka / tutup bantuan ini</span></div>
         <div><kbd>Esc</kbd><span>Tutup jendela</span></div>
       </div></div>
@@ -158,6 +168,6 @@
 <script>window.Phaser || document.write('<script src="https://unpkg.com/phaser@3.80.1/dist/phaser.min.js"><\/script>');</script>
 <script>window.Phaser || document.write('<script src="phaser.min.js"><\/script>');</script>
 <script src="fishing-core.js?v=1"></script>
-  <script src="game.js?v=20"></script>
+  <script src="game.js?v=21"></script>
 </body>
 </html>
