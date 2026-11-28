@@ -154,6 +154,26 @@ var SKILLS = {
 };
 function skillLevel(k) { var v = Save.data.skillLv && Save.data.skillLv[k]; return Math.max(1, Math.floor(+v || 1)); }
 function skillSpent() { var s = 0; SKILL_ORDER.forEach(function (k) { s += skillLevel(k) - 1; }); return s; }
+/* Reset keahlian: reset pertama gratis, berikutnya bayar Koin (1.000, 2.000, 3.000, ... maks 20.000) */
+var SKILL_RESET_BASE = 1000, SKILL_RESET_MAX = 20000;
+function skillResetCost() { var n = Save.data.skillResets | 0; return n <= 0 ? 0 : Math.min(SKILL_RESET_MAX, SKILL_RESET_BASE * n); }
+var skillResetArm = 0;
+function resetSkills() {
+  var b = $('btnSkillReset'), cost = skillResetCost(), d = Save.data;
+  if (skillSpent() <= 0) return;
+  if (!skillResetArm) {                                    // ketuk pertama = minta konfirmasi
+    skillResetArm = 1; b.textContent = 'Yakin? Ketuk lagi';
+    setTimeout(function () { skillResetArm = 0; if (Modal.cur === 'skill') renderSkills(); }, 3000);
+    return;
+  }
+  skillResetArm = 0;
+  if (d.coins < cost) { UI.toast('<div>Koin kurang ' + fmt(cost - d.coins) + '</div>', '#ff7b7b', false, 1500); renderSkills(); return; }
+  d.coins -= cost; d.skillResets = (d.skillResets | 0) + 1;
+  SKILL_ORDER.forEach(function (k) { d.skillLv[k] = 1; });
+  Save.write(); UI.setCoins(true); Snd.play('skill');
+  UI.toast('<div>Keahlian direset<small>' + fmt(skillPoints()) + ' poin dikembalikan' + (cost ? ' (-' + fmt(cost) + ' Koin)' : ' (gratis)') + '</small></div>', '#59b6ff', false, 2400);
+  UI.setLevel(false); renderSkills();
+}
 function skillPoints() { return Math.max(0, levelInfo(Save.data.xp).level - 1 - skillSpent()); }
 function curRod() { return RODS_BY_ID[Save.data.rod] || RODS[0]; }
 
@@ -288,7 +308,7 @@ function slotsFromCounts(counts) {         // migrasi save lama (jumlah per jeni
 function cleanMuts(arr, slots) { var r = [], i; for (i = 0; i < NSLOT; i++) { var v = Array.isArray(arr) ? arr[i] : null; r.push(slots[i] && v && MUT_BY_ID[v] ? v : null); } return r; }
 function blankData() {
   return { coins: 0, inv: {}, slots: cleanSlots(null), caught: {}, px: null, py: null, name: 'Nelayan', xp: 0, kgs: blankKgs(), muts: blankKgs(), record: {}, zoom: ZOOM_MAX,
-    rod: 'kayu', rods: ['kayu'], skillLv: { luck: 1, mut: 1, big: 1, swift: 1 }, baits: {}, bait: null };
+    rod: 'kayu', rods: ['kayu'], skillLv: { luck: 1, mut: 1, big: 1, swift: 1 }, skillResets: 0, baits: {}, bait: null };
 }
 var Save = {
   data: blankData(),
@@ -311,6 +331,7 @@ var Save = {
       var sl = d.skillLv && typeof d.skillLv === 'object' ? d.skillLv : null, old = d.skills && typeof d.skills === 'object' ? d.skills : {}, cum = [0, 1, 3, 6, 10, 15, 21];
       var lvOf = function (k) { return sl ? Math.max(1, Math.floor(+sl[k]) || 1) : 1 + cum[Math.max(0, Math.min(6, old[k] | 0))]; };   // save lama (tingkat 0-6): level = 1 + poin yang sudah dipakai
       this.data.skillLv = { luck: lvOf('luck'), mut: lvOf('mut'), big: lvOf('big'), swift: lvOf('swift') };
+      this.data.skillResets = Math.max(0, Math.min(9999, Math.floor(+d.skillResets) || 0));
       var bt = {};
       if (d.baits && typeof d.baits === 'object') BAITS.forEach(function (b) { var n = Math.floor(+d.baits[b.id] || 0); if (n > 0) bt[b.id] = Math.min(BAIT_MAX, n); });
       this.data.baits = bt;
@@ -2015,6 +2036,8 @@ function renderSkills() {
     h += '</div></div>';
   });
   $('skillCols').innerHTML = h;
+  var rb = $('btnSkillReset');
+  if (rb) { var rc = skillResetCost(); rb.textContent = skillResetArm ? 'Yakin? Ketuk lagi' : 'Reset (' + (rc ? fmt(rc) + ' Koin' : 'Gratis') + ')'; rb.disabled = skillSpent() <= 0; }
   $('skillPts').textContent = 'Poin keahlian: ' + fmt(pts) + ' (didapat ' + fmt(levelInfo(Save.data.xp).level - 1) + ', terpakai ' + fmt(skillSpent()) + ')';
   var ab = activeBait(), li = FCA.luckInfo(fishState(ab, 1)), ch = rarityChances(ab, 1);
   $('skillInfo').innerHTML = 'Hoki total ' + fmtLuck(li.totalLuck) + ' (dasar 100%, joran +' + curRod().luck + '%, keahlian +' + fmtP(r1(FCA.skillBonus('luck', skillLevel('luck')))) + '%, umpan +' + (ab ? ab.luck : 0) + '%)' +
@@ -2055,7 +2078,7 @@ var Modal = {
     if (name === 'inv') { resetArm = 0; moveFrom = null; $('btnReset').textContent = 'Hapus Data'; renderInventory(); }
     if (name === 'shop') { npcLine = NPC_SAY.hi; shopTab = 'fish'; renderShop(); }
     if (name === 'profile') renderProfile();
-    if (name === 'skill') renderSkills();
+    if (name === 'skill') { skillResetArm = 0; renderSkills(); }
     if (name === 'book') renderBook();
   },
   close: function () {
@@ -2351,6 +2374,7 @@ function initButtons() {
   press('btnSkill', function () { Modal.toggle('skill'); });
   press('btnHelp', function () { Modal.toggle('help'); });
   press('btnBook', function () { Modal.toggle('book'); });
+  $('btnSkillReset').addEventListener('click', resetSkills);
   $('skillCols').addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('.skBuy') : null; if (b) buySkill(b.getAttribute('data-k'), +b.getAttribute('data-n') || 1); });
   Array.prototype.forEach.call(document.querySelectorAll('button'), function (b) { b.addEventListener('mousedown', function (e) { e.preventDefault(); }); });   // tombol tidak menyimpan fokus => Spasi tidak menekan ulang tombol
   $('tabBag').addEventListener('click', function () { invTab = 'bag'; renderInventory(); });
