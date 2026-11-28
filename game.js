@@ -292,7 +292,7 @@ function blankData() {
 }
 var Save = {
   data: blankData(),
-  migrated: 0,
+  migrated: 0, skillRefund: 0,
   load: function () {
     try {
       var raw = localStorage.getItem(SAVE_KEY);
@@ -327,6 +327,9 @@ var Save = {
         FISH.forEach(function (f) { if (cg[f.id] > 0) xp0 += cg[f.id] * xpBase(f.rarity) + XP_FIRST; });
         this.data.xp = xp0;
       } else this.data.xp = Math.max(0, Math.floor(+d.xp || 0));
+      var earned = levelInfo(this.data.xp).level - 1, used = 0, sd = this.data;     // poin terpakai tidak boleh melebihi poin yang didapat (1 per naik tingkat)
+      SKILL_ORDER.forEach(function (k) { used += sd.skillLv[k] - 1; });
+      if (used > earned) { SKILL_ORDER.forEach(function (k) { sd.skillLv[k] = 1; }); this.skillRefund = earned; }   // save lama kelebihan: semua dikembalikan jadi poin
     } catch (e) { /* abaikan */ }
   },
   write: function () {
@@ -2012,7 +2015,7 @@ function renderSkills() {
     h += '</div></div>';
   });
   $('skillCols').innerHTML = h;
-  $('skillPts').textContent = 'Poin keahlian: ' + fmt(pts);
+  $('skillPts').textContent = 'Poin keahlian: ' + fmt(pts) + ' (didapat ' + fmt(levelInfo(Save.data.xp).level - 1) + ', terpakai ' + fmt(skillSpent()) + ')';
   var ab = activeBait(), li = FCA.luckInfo(fishState(ab, 1)), ch = rarityChances(ab, 1);
   $('skillInfo').innerHTML = 'Hoki total ' + fmtLuck(li.totalLuck) + ' (dasar 100%, joran +' + curRod().luck + '%, keahlian +' + fmtP(r1(FCA.skillBonus('luck', skillLevel('luck')))) + '%, umpan +' + (ab ? ab.luck : 0) + '%)' +
     ' | Efektif x' + fmtP(Math.round(li.factor * 100) / 100) + ' | Tenaga ' + curRod().power +
@@ -3411,6 +3414,7 @@ function start() {
   resetJoy();
   UI.setCoins(false); UI.setBag(); UI.setLevel(false); UI.setZoomBtns();
   Hotbar.build(); Hotbar.render();
+  if (Save.skillRefund > 0) UI.toast('<div>Poin keahlian dikembalikan: ' + Save.skillRefund + '<small>Keahlian lama melebihi poin yang didapat. Atur ulang di menu Keahlian (K)</small></div>', '#ffd54a', false, 5200);
   if (Save.migrated > 0) UI.toast('<div>Tas ikan kini punya 50 kotak. ' + Save.migrated + ' ikan berlebih otomatis dijual.</div>', '#ffd54a', false, 3200);
 
   if (typeof Phaser === 'undefined') {
