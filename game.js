@@ -194,7 +194,7 @@ var FCA = FishingCore.createGameAdapter({
 });
 function fishState(bait, cp) {
   var r = curRod();
-  return { rod: { power: r.power, luck: r.luck }, bait: bait ? { luck: bait.luck, mut: bait.mut, big: bait.big } : null,
+  return { rod: { power: r.power, luck: r.luck }, bait: bait ? { luck: bait.luck, mut: bait.mut || 0, big: bait.big } : null,
     skills: { luck: skillLevel('luck'), mut: skillLevel('mut'), big: skillLevel('big'), swift: skillLevel('swift') }, castPower: cp === undefined ? 1 : cp };
 }
 function totalLuck(bait, cp) { return FCA.luckInfo(fishState(bait === undefined ? activeBait() : bait, cp)).totalLuck; }
@@ -203,7 +203,9 @@ function mutChance(bait) { return FCA.mutationChance(fishState(bait === undefine
 function jumboChance(bait) { return FCA.jumboChance(fishState(bait === undefined ? activeBait() : bait)); }
 function rollCatch(bait, cp) {                        // ketersediaan -> rarity -> ikan -> mutasi -> ukuran
   var res = FCA.rollCatch(fishState(bait, cp)), ok = res.status === 'ok', def = ok ? FISH_BY_ID[res.fishId] : FISH[0];
-  return { def: def, kg: ok ? res.kg : defaultKg(def), mut: ok ? res.mutation : null };
+  var mut = ok ? res.mutation : null, wx = ok ? weatherAt() : null;
+  if (wx && Math.random() * 100 < wx.chance) mut = wx.mutId;     // cuaca mutasi: peluang (25-100%) ikan jadi mutasi cuaca itu
+  return { def: def, kg: ok ? res.kg : defaultKg(def), mut: mut };
 }
 
 /* ---------- Level & XP pemain ---------- */
@@ -1809,6 +1811,7 @@ function initKeyboard() {
     else if (e.code === 'KeyP') Modal.toggle('profile');
     else if (e.code === 'KeyK') Modal.toggle('skill');
     else if (e.code === 'KeyN') Modal.toggle('book');
+    else if (e.code === 'KeyM') { Snd.cycle(); updateSoundBtn(); }
     else if (e.code === 'KeyH' || e.code === 'F1' || (e.key === '?')) { Modal.toggle('help'); e.preventDefault(); }
     else if (e.code === 'KeyQ') { if (!Ctl.modal) cycleRod(); }
     else if (e.code === 'Equal' || e.code === 'NumpadAdd') { if (!Ctl.modal) changeZoom(ZOOM_STEP); }
@@ -1903,6 +1906,7 @@ function buyRod(id) {
   d.coins -= r.price; d.rods.push(id); d.rod = Hotbar.canSwitch() ? id : d.rod;
   Save.write(); UI.setCoins(true); Hotbar.render();
   npcLine = 'Pilihan bagus! ' + r.name + ' sekarang milikmu.';
+  Snd.play('buy');
   renderShop();
 }
 function renderRodShop() {
@@ -1958,6 +1962,7 @@ function buyBait(id, packs) {
   if (!activeBait()) d.bait = id;                    // belum ada umpan aktif => langsung dipakai
   Save.write(); UI.setCoins(true); Hotbar.render();
   npcLine = 'Terima kasih! ' + n + ' ' + b.name + ' masuk tasmu.';
+  Snd.play('buy');
   renderShop();
 }
 function renderBaitShop() {
@@ -2018,6 +2023,7 @@ function buySkill(k, n) {
   n = Math.max(1, n | 0);
   if (!SKILLS[k] || skillPoints() < n) return;
   Save.data.skillLv[k] = skillLevel(k) + n; Save.write();
+  Snd.play('skill');
   UI.setLevel(false); renderSkills();
 }
 
@@ -2033,6 +2039,7 @@ var npcLine = NPC_SAY.hi;
 var Modal = {
   cur: null,
   open: function (name) {
+    Snd.play(this.cur ? 'tick' : 'open');
     this.cur = name;
     $('modal').classList.remove('hidden');
     $('panelInv').hidden = name !== 'inv';
@@ -2050,6 +2057,7 @@ var Modal = {
   },
   close: function () {
     if (!this.cur) return;
+    Snd.play('close');
     this.cur = null;
     stopPortrait();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // simpan nama bila sedang diketik
@@ -2263,6 +2271,7 @@ function sellFish(id, all) {                          // jual 1 = ikan paling ri
   Save.write();
   UI.setCoins(true); UI.setBag(); Hotbar.render();
   npcLine = NPC_SAY.thanks(cnt, earn);
+  Snd.play('coin', cnt);
   renderShop();
 }
 function sellEverything() {
@@ -2274,6 +2283,7 @@ function sellEverything() {
   Save.write();
   UI.setCoins(true); UI.setBag(); Hotbar.render();
   npcLine = NPC_SAY.thanks(cnt, earn);
+  Snd.play('coin', cnt);
   renderShop();
 }
 function renderShop() {
@@ -2319,6 +2329,8 @@ function initButtons() {
   fb.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   press('btnTalk', function () { if (scene) scene.pressTalk(); });
   press('btnBag', function () { Modal.toggle('inv'); });
+  press('btnSound', function () { Snd.cycle(); updateSoundBtn(); });
+  document.addEventListener('pointerdown', function (e) { var t = e.target; if (t && t.closest && t.closest('.tab,.btn,.row,.slot,.hb')) Snd.play('tick'); });
   press('btnProfile', function () { Modal.toggle('profile'); });
   press('btnZin', function () { if (!Ctl.modal) changeZoom(ZOOM_STEP); });
   press('btnZout', function () { if (!Ctl.modal) changeZoom(-ZOOM_STEP); });
@@ -2400,6 +2412,283 @@ function snapDir(dx, dy) {
   var i = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return ((i % 8) + 8) % 8;
 }
+
+/* =====================================================================
+   WAKTU GAME, CUACA MUTASI, SUARA
+   ===================================================================== */
+
+/* ---------- Waktu game: 24 jam nyata = 4 hari game (1 hari game = 6 jam nyata) ----------
+   Dihitung dari jam nyata (Date.now), jadi waktu tetap berjalan walau pemain keluar dari game. */
+var DAY_REAL_MS = 6 * 3600 * 1000;
+function gameClock(now) {
+  now = now === undefined ? Date.now() : now;
+  var hour = (now % DAY_REAL_MS) / DAY_REAL_MS * 24;
+  return { hour: hour, h: Math.floor(hour), m: Math.floor((hour % 1) * 60), day: Math.floor(now / DAY_REAL_MS) };
+}
+/* warna pengali (multiply) untuk dunia + faktor malam n (0 = siang, 1 = malam pekat) */
+var LIGHT_KEYS = [
+  { h: 0,    c: [92, 108, 176],  n: 1 },
+  { h: 4.8,  c: [96, 112, 180],  n: 1 },
+  { h: 5.8,  c: [168, 140, 178], n: 0.75 },
+  { h: 6.6,  c: [255, 200, 156], n: 0.35 },
+  { h: 8,    c: [255, 242, 220], n: 0.05 },
+  { h: 10,   c: [255, 255, 255], n: 0 },
+  { h: 15.5, c: [255, 255, 255], n: 0 },
+  { h: 17,   c: [255, 238, 205], n: 0.05 },
+  { h: 18,   c: [255, 190, 130], n: 0.3 },
+  { h: 19,   c: [226, 124, 116], n: 0.6 },
+  { h: 20,   c: [140, 112, 172], n: 0.85 },
+  { h: 21.3, c: [96, 112, 180],  n: 1 },
+  { h: 24,   c: [92, 108, 176],  n: 1 }
+];
+function lightAt(hour) {
+  var i = 0;
+  while (i < LIGHT_KEYS.length - 2 && hour >= LIGHT_KEYS[i + 1].h) i++;
+  var a = LIGHT_KEYS[i], b = LIGHT_KEYS[i + 1], t = Math.max(0, Math.min(1, (hour - a.h) / (b.h - a.h)));
+  return { c: [a.c[0] + (b.c[0] - a.c[0]) * t, a.c[1] + (b.c[1] - a.c[1]) * t, a.c[2] + (b.c[2] - a.c[2]) * t], n: a.n + (b.n - a.n) * t };
+}
+function periodName(h) { return h < 5 ? 'Malam' : h < 10 ? 'Pagi' : h < 15 ? 'Siang' : h < 18.5 ? 'Sore' : 'Malam'; }
+
+/* ---------- Cuaca mutasi: tiap cuaca MENAIKKAN PELUANG SATU MUTASI TERTENTU ----------
+   Contoh: Hujan Emas -> ikan yang ditangkap punya peluang bermutasi Emas. Tiap kejadian berlangsung WX_DURATION_MS (5 menit).
+   Dalam 1 hari nyata (jam lokal) ada WX_PER_DAY kejadian (1-4, minimal 1), tersebar rata: hari dibagi sebanyak itu bagian
+   dan satu kejadian jatuh di waktu acak tiap bagian. Peluang mutasi tiap kejadian acak 25%-100% (kelipatan 5).
+   Semua deterministik dari jam nyata (hash), jadi sama untuk semua perangkat dan tetap berjalan walau game ditutup. */
+var WX_DURATION_MS = 5 * 60 * 1000, WX_MIN_CHANCE = 25, WX_MAX_CHANCE = 100, WX_STEP = 5;
+var WX_PER_DAY = [{ n: 1, w: 30 }, { n: 2, w: 35 }, { n: 3, w: 20 }, { n: 4, w: 15 }];       // peluang jumlah kejadian per hari
+var WEATHERS = [    // mutId = mutasi yang dinaikkan; w = bobot kemunculan; night = hanya muncul malam hari game
+  { id: 'kabut',  mutId: 'albino',  name: 'Kabut Albino',   w: 30, rain: 0,   fog: 0.55, dark: 0.94, color: '#eef0ff' },
+  { id: 'emas',   mutId: 'emas',    name: 'Hujan Emas',     w: 28, rain: 0.6, fog: 0.05, dark: 0.92, color: '#ffd54a', rainColor: 'rgba(255,214,90,0.7)' },
+  { id: 'kristal',mutId: 'kristal', name: 'Hujan Kristal',  w: 20, rain: 0.5, fog: 0.1,  dark: 0.93, color: '#7ae8ff', rainColor: 'rgba(122,232,255,0.7)' },
+  { id: 'neon',   mutId: 'neon',    name: 'Badai Neon',     w: 14, rain: 1,   fog: 0.12, dark: 0.76, color: '#ff5ee8', rainColor: 'rgba(255,94,232,0.65)', storm: true, flash: '#ff9af0' },
+  { id: 'galaksi',mutId: 'kosmik',  name: 'Aurora Galaksi', w: 8,  night: true, aurora: 1, dark: 1, color: '#b48cff' }
+];
+var wxDayCache = { day: null, list: [] };
+function wxEventsOfDay(day, dayStart) {
+  if (wxDayCache.day === day) return wxDayCache.list;
+  var r = hash(day, 31, 3) * 100, cnt = WX_PER_DAY[WX_PER_DAY.length - 1].n, i, k;
+  for (i = 0; i < WX_PER_DAY.length; i++) { r -= WX_PER_DAY[i].w; if (r <= 0) { cnt = WX_PER_DAY[i].n; break; } }
+  var seg = 24 * 3600 * 1000 / cnt, list = [];
+  for (i = 0; i < cnt; i++) {
+    var start = dayStart + i * seg + hash(day, 40 + i, 5) * (seg - WX_DURATION_MS);
+    var night = lightAt(gameClock(start + WX_DURATION_MS / 2).hour).n >= 0.85;
+    var pool = WEATHERS.filter(function (w) { return !w.night || night; }), tot = 0;
+    pool.forEach(function (w) { tot += w.w; });
+    var q = hash(day, 50 + i, 9) * tot, pick = pool[0];
+    for (k = 0; k < pool.length; k++) { q -= pool[k].w; if (q <= 0) { pick = pool[k]; break; } }
+    var steps = Math.floor((WX_MAX_CHANCE - WX_MIN_CHANCE) / WX_STEP) + 1;
+    list.push({ type: pick, mutId: pick.mutId, chance: WX_MIN_CHANCE + WX_STEP * Math.min(steps - 1, Math.floor(hash(day, 60 + i, 2) * steps)), start: start, endsAt: start + WX_DURATION_MS });
+  }
+  wxDayCache = { day: day, list: list };
+  return list;
+}
+function weatherAt(now) {            // kejadian cuaca yang sedang berlangsung, atau null
+  now = now === undefined ? Date.now() : now;
+  var off = -new Date(now).getTimezoneOffset() * 60000, DAY = 24 * 3600 * 1000;
+  var day = Math.floor((now + off) / DAY), list = wxEventsOfDay(day, day * DAY - off);
+  for (var i = 0; i < list.length; i++) if (now >= list[i].start && now < list[i].endsAt) return list[i];
+  return null;
+}
+function weatherMut() { var w = weatherAt(); return w ? { id: w.mutId, chance: w.chance } : null; }   // mutasi yang sedang dinaikkan cuaca
+function rarityIdx(r) { return Math.max(0, Object.keys(RARITY).indexOf(r)); }
+
+/* ---------- Suara: sintesis WebAudio (tanpa file audio) ---------- */
+var Snd = (function () {
+  var ctx = null, master, sfxBus, musBus, ambBus, noiseBuf, rainG, mode = 0;       // mode 0 = semua, 1 = efek saja, 2 = senyap
+  var env = { n: 0, rain: 0, storm: false }, nextMusic = 0, step = 0, melo = 3, nextBird = 0, nextCricket = 0, ticking = 0;
+  try { mode = Math.max(0, Math.min(2, parseInt(localStorage.getItem('tf_snd'), 10) || 0)); } catch (e) { /* abaikan */ }
+
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function ready() { return ctx && ctx.state === 'running'; }
+
+  function tone(f, t, dur, type, vol, o) {
+    o = o || {};
+    var osc = ctx.createOscillator(), g = ctx.createGain(), att = o.att || 0.005;
+    osc.type = type || 'sine'; osc.frequency.setValueAtTime(f, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(o.bus || sfxBus); osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  function noise(t, dur, vol, type, f0, f1, q, att, bus) {
+    var src = ctx.createBufferSource(), flt = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = noiseBuf; src.loop = true;
+    flt.type = type; flt.frequency.setValueAtTime(f0, t); if (f1) flt.frequency.exponentialRampToValueAtTime(f1, t + dur); flt.Q.value = q || 1;
+    att = att || 0.005;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(flt); flt.connect(g); g.connect(bus || sfxBus); src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.05);
+  }
+  function shimmer(t, n, spread) { for (var k = 0; k < n; k++) tone(2000 + Math.random() * 2600, t + k * (spread / n), 0.25, 'sine', 0.035); }
+
+  var PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19];
+  var SFX = {
+    tick:  function (t) { tone(1100, t, 0.04, 'square', 0.035, { to: 800 }); },
+    open:  function (t) { tone(520, t, 0.12, 'triangle', 0.1, { to: 780 }); },
+    close: function (t) { tone(700, t, 0.1, 'triangle', 0.08, { to: 440 }); },
+    cast:  function (t) { noise(t, 0.3, 0.3, 'bandpass', 500, 2600, 1.2); tone(300, t, 0.2, 'sine', 0.05, { to: 700 }); },
+    splash: function (t) { noise(t, 0.4, 0.32, 'lowpass', 3200, 500, 0.8); tone(380, t + 0.03, 0.1, 'sine', 0.1, { to: 900 }); tone(520, t + 0.1, 0.09, 'sine', 0.07, { to: 1100 }); },
+    bite:  function (t) { tone(988, t, 0.12, 'square', 0.12); tone(1319, t + 0.11, 0.18, 'square', 0.12); tone(988, t + 0.28, 0.12, 'square', 0.09); tone(1319, t + 0.39, 0.2, 'square', 0.09); },
+    reel:  function (t, p) { p = +p || 0; var f = 280 + 520 * p; tone(f, t, 0.07, 'triangle', 0.12, { to: f * 1.25 }); noise(t, 0.05, 0.07, 'highpass', 3000); },
+    lose:  function (t) { tone(520, t, 0.45, 'sine', 0.16, { to: 160 }); noise(t, 0.3, 0.12, 'lowpass', 1200, 300); },
+    coin:  function (t, n) { n = Math.max(1, Math.min(4, n | 0)); for (var k = 0; k < n; k++) { tone(1568, t + k * 0.07, 0.08, 'square', 0.07); tone(2093, t + k * 0.07 + 0.06, 0.2, 'square', 0.07); } },
+    buy:   function (t) { tone(330, t, 0.1, 'triangle', 0.12); tone(1568, t + 0.08, 0.08, 'square', 0.07); tone(2093, t + 0.14, 0.22, 'square', 0.07); },
+    skill: function (t) { [523, 659, 784, 1047].forEach(function (f, k) { tone(f, t + k * 0.07, 0.25, 'sine', 0.1); }); shimmer(t + 0.2, 4, 0.3); },
+    error: function (t) { tone(160, t, 0.18, 'sawtooth', 0.08); },
+    levelup: function (t) {
+      [523, 659, 784, 1047].forEach(function (f, k) { tone(f, t + k * 0.12, k === 3 ? 0.7 : 0.2, 'triangle', 0.16); tone(f, t + k * 0.12, k === 3 ? 0.7 : 0.2, 'square', 0.04); });
+      tone(262, t, 0.9, 'sine', 0.12); shimmer(t + 0.4, 8, 0.7);
+    },
+    catch: function (t, ri, mut, jumbo) {                // jingle makin panjang & megah untuk rarity tinggi
+      ri = ri | 0;
+      var n = Math.min(9, 3 + Math.round(ri * 1.3)), k, base = 523.25;
+      for (k = 0; k < n; k++) {
+        var f = base * Math.pow(2, PENTA[k] / 12), last = k === n - 1;
+        tone(f, t + k * 0.075, last ? 0.5 : 0.14, 'triangle', 0.13); if (ri >= 2) tone(f * 2, t + k * 0.075, last ? 0.4 : 0.1, 'sine', 0.04);
+      }
+      if (ri >= 3) shimmer(t + 0.2, 6, 0.6);
+      if (ri >= 4) { tone(131, t, 1, 'sine', 0.18); tone(196, t + 0.05, 1, 'sine', 0.12); shimmer(t + 0.3, 10, 1); }
+      if (mut) { [1568, 2093, 2637, 3136].forEach(function (f, q) { tone(f, t + 0.1 + q * 0.06, 0.4, 'sine', 0.06); }); shimmer(t + 0.35, 6, 0.5); }
+      if (jumbo) { tone(110, t, 0.35, 'sine', 0.2, { to: 55 }); noise(t, 0.35, 0.25, 'lowpass', 900, 200); }
+    },
+    step: function (t, surf, run) {
+      var v = run ? 1.5 : 1;
+      if (surf === 'wood') { tone(150, t, 0.09, 'sine', 0.1 * v, { to: 90 }); noise(t, 0.05, 0.05 * v, 'lowpass', 700, 300); }
+      else if (surf === 'grass') noise(t, 0.06, 0.045 * v, 'bandpass', 1800, 1200, 1);
+      else noise(t, 0.07, 0.05 * v, 'lowpass', 900, 400);
+    },
+    thunder: function (t) { noise(t, 2.8, 0.6, 'lowpass', 240, 45, 0.7, 0.25); tone(55, t + 0.1, 2, 'sine', 0.15, { to: 35, att: 0.4 }); }
+  };
+
+  /* ---------- musik generatif: pagi/siang riang, malam pelan ---------- */
+  var DAY = { bpm: 84, mel: [60, 62, 64, 67, 69, 72, 74, 76], p: 0.5, ch: [[48, [0, 4, 7, 11]], [45, [0, 3, 7, 10]], [41, [0, 4, 7, 11]], [43, [0, 4, 7, 9]]] };
+  var NIGHT = { bpm: 62, mel: [57, 60, 62, 64, 67, 69, 72, 76], p: 0.3, ch: [[45, [0, 3, 7, 10]], [41, [0, 4, 7, 11]], [48, [0, 4, 7, 11]], [43, [0, 4, 7, 9]]] };
+  function scheduleStep(t, s) {
+    var M = env.n > 0.6 ? NIGHT : DAY, bar = Math.floor(s / 8) % 4, pos = s % 8, ch = M.ch[bar], root = ch[0], notes = ch[1];
+    var dur = 60 / M.bpm / 2, bus = musBus;
+    if (pos === 0) {
+      notes.slice(0, 3).forEach(function (iv) { tone(mtof(root + 12 + iv), t, dur * 8, 'sine', 0.035, { att: 0.7, bus: bus }); });
+      tone(mtof(root), t, dur * 3.5, 'triangle', 0.1, { bus: bus });
+    }
+    if (pos === 4) tone(mtof(root + 7), t, dur * 3, 'triangle', 0.07, { bus: bus });
+    var arp = [0, 1, 2, 3, 2, 1, 2, 1][pos];
+    if (env.n <= 0.6 || pos % 2 === 0) tone(mtof(root + 12 + notes[arp] + 12), t, dur * 1.6, 'triangle', env.n > 0.6 ? 0.045 : 0.06, { bus: bus });
+    if (pos % 2 === 0 && Math.random() < M.p) {
+      melo = Math.max(0, Math.min(M.mel.length - 1, melo + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.3 ? 2 : 1)));
+      var f = mtof(M.mel[melo] + (env.n > 0.6 ? 12 : 0));
+      tone(f, t, dur * 3, 'sine', 0.08, { bus: bus }); tone(f * 2, t, dur * 0.8, 'sine', 0.02, { bus: bus });
+    }
+  }
+
+  function buildAmbient() {
+    function loopSrc() { var s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(0, Math.random() * 1.5); return s; }
+    // ombak: derau lembut yang naik-turun pelan
+    var w1 = loopSrc(), f1 = ctx.createBiquadFilter(), g1 = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    f1.type = 'lowpass'; f1.frequency.value = 650; g1.gain.value = 0.06; lfo.frequency.value = 0.11; lg.gain.value = 0.04;
+    lfo.connect(lg); lg.connect(g1.gain); w1.connect(f1); f1.connect(g1); g1.connect(ambBus); lfo.start();
+    var w2 = loopSrc(), f2 = ctx.createBiquadFilter(), g2 = ctx.createGain(), lfo2 = ctx.createOscillator(), lg2 = ctx.createGain();
+    f2.type = 'bandpass'; f2.frequency.value = 2200; g2.gain.value = 0.012; lfo2.frequency.value = 0.17; lg2.gain.value = 0.01;
+    lfo2.connect(lg2); lg2.connect(g2.gain); w2.connect(f2); f2.connect(g2); g2.connect(ambBus); lfo2.start();
+    // hujan
+    var r = loopSrc(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 900; lp.type = 'lowpass'; lp.frequency.value = 6500;
+    rainG = ctx.createGain(); rainG.gain.value = 0; r.connect(hp); hp.connect(lp); lp.connect(rainG); rainG.connect(ambBus);
+  }
+
+  function applyMode(instant) {
+    if (!ctx) return;
+    var t = ctx.currentTime, k = instant ? 0.001 : 0.15;
+    sfxBus.gain.setTargetAtTime(mode < 2 ? 1 : 0, t, k);
+    ambBus.gain.setTargetAtTime(mode < 2 ? 1 : 0, t, k);
+    musBus.gain.setTargetAtTime(mode === 0 ? (env.storm ? 0.12 : 0.3) : 0, t, k * 4);
+  }
+
+  function tick() {
+    if (!ready()) return;
+    var now = ctx.currentTime;
+    if (rainG) rainG.gain.setTargetAtTime(env.rain * 0.2, now, 1.5);
+    if (mode === 0) {
+      if (nextMusic < now) nextMusic = now + 0.1;
+      var guard = 0;
+      while (nextMusic < now + 0.9 && guard++ < 8) { scheduleStep(nextMusic, step++); nextMusic += 60 / (env.n > 0.6 ? NIGHT.bpm : DAY.bpm) / 2; }
+    }
+    if (mode < 2) {
+      if (env.n < 0.3 && env.rain < 0.1 && now > nextBird) {
+        nextBird = now + 3 + Math.random() * 6;
+        var b0 = 2600 + Math.random() * 700, nb = 2 + Math.floor(Math.random() * 3);
+        for (var k = 0; k < nb; k++) tone(b0 + k * 80, now + 0.05 + k * 0.1, 0.07, 'sine', 0.02, { to: b0 + 900, bus: ambBus });
+      }
+      if (env.n > 0.7 && env.rain < 0.3 && now > nextCricket) {
+        nextCricket = now + 0.6 + Math.random() * 1.4;
+        for (var q = 0; q < 3; q++) tone(4300, now + 0.05 + q * 0.055, 0.03, 'sine', 0.012, { bus: ambBus });
+      }
+    }
+  }
+
+  function init() {
+    if (ctx) return ctx;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { ctx = new AC(); } catch (e) { ctx = null; return null; }
+    var comp = ctx.createDynamicsCompressor();
+    master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp); comp.connect(ctx.destination);
+    sfxBus = ctx.createGain(); musBus = ctx.createGain(); ambBus = ctx.createGain();
+    sfxBus.connect(master); musBus.connect(master); ambBus.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    var d = noiseBuf.getChannelData(0), i;
+    for (i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    buildAmbient(); applyMode(true);
+    ticking = setInterval(tick, 200);
+    return ctx;
+  }
+  function unlock() { init(); if (ctx && ctx.state === 'suspended') ctx.resume(); }
+  ['pointerdown', 'keydown', 'touchend'].forEach(function (ev) { document.addEventListener(ev, unlock, { passive: true }); });
+  document.addEventListener('visibilitychange', function () {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend(); else ctx.resume();
+  });
+
+  return {
+    play: function (name, a, b, c) {
+      if (mode > 1 || !ready() || !SFX[name]) return;
+      SFX[name](ctx.currentTime + 0.005, a, b, c);
+    },
+    env: function (n, rain, storm) {
+      env.n = n; env.rain = rain; var was = env.storm; env.storm = !!storm;
+      if (was !== env.storm) applyMode(false);
+    },
+    cycle: function () {
+      mode = (mode + 1) % 3;
+      try { localStorage.setItem('tf_snd', String(mode)); } catch (e) { /* abaikan */ }
+      unlock(); applyMode(false);
+      return mode;
+    },
+    mode: function () { return mode; }
+  };
+})();
+var SND_LABEL = ['SUARA', 'EFEK', 'SENYAP'];
+function updateSoundBtn() {
+  var m = Snd.mode(), b = $('btnSound');
+  if (!b) return;
+  b.setAttribute('data-m', m);
+  $('sndLbl').textContent = SND_LABEL[m];
+}
+
+/* ---------- HUD jam & cuaca ---------- */
+var clkCache = '';
+function updateClockHud(clk, n, wx) {
+  var t = (clk.h < 10 ? '0' : '') + clk.h + ':' + (clk.m < 10 ? '0' : '') + clk.m + '|' + periodName(clk.hour) + '|' + (n > 0.5) + '|' + (wx ? wx.type.id + wx.start : '') + '|' + (wx ? Math.ceil((wx.endsAt - Date.now()) / 60000) : 0);
+  if (t === clkCache) return;
+  clkCache = t;
+  $('clkTime').textContent = (clk.h < 10 ? '0' : '') + clk.h + ':' + (clk.m < 10 ? '0' : '') + clk.m;
+  $('clkPeriod').textContent = periodName(clk.hour);
+  $('clkIcon').className = n > 0.5 ? 'moon' : 'sun';
+  var wc = $('wxChip');
+  if (wx) {
+    wc.hidden = false; wc.style.setProperty('--wc', wx.type.color);
+    $('wxName').textContent = wx.type.name;
+    $('wxInfo').textContent = 'Peluang ' + MUT_BY_ID[wx.mutId].name + ' ' + wx.chance + '% | sisa ' + Math.max(1, Math.ceil((wx.endsAt - Date.now()) / 60000)) + ' mnt';
+  } else wc.hidden = true;
+}
+
 
 function createSceneClass() {
   return class MainScene extends Phaser.Scene {
@@ -2508,6 +2797,7 @@ function createSceneClass() {
             var gl = self.add.image(lp.x, lp.y - 38, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5).setDepth(lp.y + 2);
             self.tweens.add({ targets: fl, scaleY: { from: 0.85, to: 1.2 }, scaleX: { from: 1.1, to: 0.85 }, duration: 180 + Math.random() * 120, yoyo: true, repeat: -1 });
             self.tweens.add({ targets: gl, alpha: { from: 0.35, to: 0.65 }, duration: 260 + Math.random() * 200, yoyo: true, repeat: -1 });
+            (self.nightLights = self.nightLights || []).push({ img: self.add.image(lp.x, lp.y - 38, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(4.2).setAlpha(0).setDepth(9996), base: 0.55 });
           }
         }
       });
@@ -2530,6 +2820,7 @@ function createSceneClass() {
       var sp0 = this.gp(M.stall.i + 0.5, M.stall.j + 0.5, ELEV_LAND);
       this.shadowAt(sp0.x + 8, sp0.y + 8, 80, 22, 1);
       this.add.image(sp0.x, sp0.y + 6, 'stall').setOrigin(this.origins.stall[0], this.origins.stall[1]).setDepth(sp0.y);
+      (this.nightLights = this.nightLights || []).push({ img: this.add.image(sp0.x, sp0.y - 46, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(5).setAlpha(0).setDepth(9996), base: 0.45 });
       var np = this.gp(M.npc.gx, M.npc.gy, ELEV_LAND);
       this.shadowAt(np.x + 3, np.y, 28, 10, 1).setDepth(np.y - 1);
       this.npcSprite = this.add.sprite(np.x, np.y, 'npc', 'i0').setOrigin(0.5, HC_FOOT / HC_H).setDepth(np.y);
@@ -2583,10 +2874,101 @@ function createSceneClass() {
       document.addEventListener('visibilitychange', function () { if (document.hidden) saveNow(); });
       window.addEventListener('pagehide', saveNow);
 
+      this.initEnv();
       UI.setCoins(false); UI.setBag();
       $('loading').classList.add('gone');
       if (IS_PC) UI.hint('PC: WASD / panah = jalan | Shift = lari | TAHAN Spasi lalu lepas = lempar | E = toko | K = keahlian | N = buku ikan | H = semua kontrol', 11000); else
       UI.hint('Geser joystick untuk berjalan. Hadap ke laut, TAHAN tombol LEMPAR: bar naik lalu turun lagi. Lepas tepat saat bar penuh untuk lemparan terjauh!', 9000);
+    }
+
+    /* ---------- siang-malam, cuaca, lampu malam ---------- */
+    initEnv() {
+      var self = this;
+      this.dayRect = this.add.rectangle(0, 0, 9000, 7000, 0xffffff).setScrollFactor(0).setDepth(9995).setBlendMode(Phaser.BlendModes.MULTIPLY);
+      var place = function () { self.dayRect.setPosition(self.scale.width / 2, self.scale.height / 2); };
+      place(); this.scale.on('resize', place);
+      // cahaya hangat di sekitar pemain saat malam
+      this.playerGlow = this.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(3.4).setAlpha(0).setDepth(9996);
+      // kunang-kunang di rumput (muncul malam)
+      this.fireflies = [];
+      var R = rng(77), tries = 0;
+      while (this.fireflies.length < 16 && tries++ < 400) {
+        var fi = Math.floor(R() * GRID), fj = Math.floor(R() * GRID);
+        if (this.T[fj * GRID + fi] !== GRASS) continue;
+        var p = this.gp(fi + R(), fj + R(), ELEV_LAND);
+        var ff = this.add.image(p.x, p.y - 8 - R() * 14, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(0.14).setTint(0xd6ff6a).setAlpha(0).setDepth(9996);
+        this.tweens.add({ targets: ff, x: ff.x + (R() - 0.5) * 50, y: ff.y + (R() - 0.5) * 30, duration: 2500 + R() * 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.fireflies.push({ img: ff, ph: R() * 6 });
+      }
+      this.envNext = 0; this.envInit = false; this.wxLevel = 0; this.wxType = null; this.wxId = undefined; this.nextBolt = 0; this.nightN = 0;
+      this.drops = [];
+      this.rainCtx = $('wxRain').getContext('2d');
+    }
+    updateEnv(time, dt) {
+      if (this.playerGlow) this.playerGlow.setPosition(this.player.x, this.player.y - 24);
+      if (time >= this.envNext) {
+        this.envNext = time + 350;
+        var now = Date.now(), clk = gameClock(now), L = lightAt(clk.hour), wx = weatherAt(now), n = L.n;
+        var id = wx ? wx.type.id + ':' + wx.start : null;
+        if (id !== this.wxId) {
+          var first = this.wxId === undefined;
+          this.wxId = id;
+          if (wx) {
+            this.wxType = wx.type;
+            if (first) this.wxLevel = 1;
+            UI.toast('<div>' + wx.type.name + (first ? ' sedang berlangsung' : ' datang') + '<small>Ikan punya peluang ' + wx.chance + '% bermutasi ' + MUT_BY_ID[wx.mutId].name + ' (sisa ' + Math.max(1, Math.ceil((wx.endsAt - Date.now()) / 60000)) + ' mnt)</small></div>', wx.type.color, false, 4200);
+          }
+        }
+        var target = wx ? 1 : 0, step = 0.35 / 10;
+        this.wxLevel += Math.max(-step, Math.min(step, target - this.wxLevel));
+        if (this.wxLevel <= 0.001 && !wx) { this.wxLevel = 0; this.wxType = null; }
+        var T = this.wxType, lv = this.wxLevel, dk = T ? 1 + (T.dark - 1) * lv : 1;
+        this.dayRect.setFillStyle(((Math.round(L.c[0] * dk) << 16) | (Math.round(L.c[1] * dk) << 8) | Math.round(L.c[2] * dk)));
+        this.nightN = n;
+        var storm = !!(T && T.storm);
+        $('wxFog').style.opacity = T && T.fog ? (T.fog * lv).toFixed(2) : 0;
+        $('wxAurora').style.filter = 'blur(18px) hue-rotate(70deg)'; $('wxAurora').style.opacity = T && T.aurora ? (lv * Math.min(1, n * 1.3)).toFixed(2) : 0;
+        this.rainI = T && T.rain ? T.rain * lv : 0;
+        if (storm && lv > 0.6 && time > this.nextBolt) {
+          this.nextBolt = time + 5000 + Math.random() * 12000;
+          var fl = $('wxFlash'); fl.style.background = (T && T.flash) || '#fff'; fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+          setTimeout(function () { Snd.play('thunder'); }, 350 + Math.random() * 1000);
+        }
+        // lampu malam: obor, kios, pemain, kunang-kunang
+        var nl = this.nightLights || [], q;
+        for (q = 0; q < nl.length; q++) nl[q].img.setAlpha(n * nl[q].base * (1 - 0.3 * (storm ? lv : 0)));
+        this.playerGlow.setAlpha(n * 0.2);
+        var ffOn = n > 0.45 && !(this.rainI > 0.3);
+        for (q = 0; q < this.fireflies.length; q++) this.fireflies[q].on = ffOn;
+        Snd.env(n, this.rainI || 0, storm && lv > 0.4);
+        updateClockHud(clk, n, wx);
+      }
+      for (var k = 0; k < this.fireflies.length; k++) {
+        var f = this.fireflies[k], tgt = f.on ? 0.55 + 0.4 * Math.sin(time * 0.004 + f.ph) : 0;
+        f.img.setAlpha(f.img.alpha + (tgt - f.img.alpha) * 0.1);
+      }
+      this.drawRain(dt);
+    }
+    drawRain(dt) {
+      var c = this.rainCtx, I = this.rainI || 0;
+      if (!c) return;
+      var cv = c.canvas, W0 = stageW, H0 = stageH;
+      if (cv.width !== W0 || cv.height !== H0) { cv.width = W0; cv.height = H0; }
+      if (I <= 0.01 && !this.drops.length) return;
+      c.clearRect(0, 0, W0, H0);
+      var want = Math.round(240 * I), d = this.drops, i;
+      while (d.length < want) d.push({ x: Math.random() * (W0 + 200), y: Math.random() * H0, l: 10 + Math.random() * 14, v: 700 + Math.random() * 400 });
+      if (d.length > want) d.length = Math.max(want, 0);
+      if (!d.length) return;
+      var slant = this.wxType && this.wxType.storm ? 0.35 : 0.15;
+      c.strokeStyle = (this.wxType && this.wxType.rainColor) || (this.wxType && this.wxType.storm ? 'rgba(210,225,255,0.6)' : 'rgba(205,228,255,0.5)'); c.lineWidth = 1.5; c.beginPath();
+      for (i = 0; i < d.length; i++) {
+        var p = d[i];
+        p.y += p.v * dt; p.x -= p.v * slant * dt;
+        if (p.y > H0 + 20 || p.x < -40) { p.y = -20 - Math.random() * 60; p.x = Math.random() * (W0 + 200); }
+        c.moveTo(p.x, p.y); c.lineTo(p.x + p.l * slant, p.y - p.l);
+      }
+      c.stroke();
     }
 
     /* ---------- koordinat & tabrakan ---------- */
@@ -2739,6 +3121,7 @@ function createSceneClass() {
         Save.write(); Hotbar.render();
       }
       f.state = 'casting'; f.t = 0; f.launch = null; f.caught = false;
+      Snd.play('cast');
       this.aimMark.setVisible(false); UI.setCastBar(false, 0, true);
       var g = this.rodGeometry();
       this.dirIdx = snapDir(g.tx - this.foot.x, (g.ty - this.foot.y) * 2);
@@ -2748,6 +3131,7 @@ function createSceneClass() {
     }
     splash(x, y) {
       var self = this;
+      Snd.play('splash');
       for (var k = 0; k < 2; k++) {
         var e = this.add.ellipse(x, y, 30, 14).setStrokeStyle(3, 0xffffff, 0.95).setDepth(9400);
         this.tweens.add({ targets: e, scaleX: 2.6 + k, scaleY: 2.6 + k, alpha: 0, duration: 650 + k * 250, delay: k * 120, onComplete: function (tw, targets) { targets[0].destroy(); } });
@@ -2759,6 +3143,7 @@ function createSceneClass() {
       f.def = rc.def; f.kg = rc.kg; f.mut = rc.mut;
       f.window = RARITY[f.def.rarity].window * FCA.reelWindowMultiplier(fishState(bait, cp));
       f.state = 'bite'; f.t = 0;
+      Snd.play('bite');
       this.splash(f.bx, f.by);
       this.bang.setVisible(true);
     }
@@ -2784,6 +3169,7 @@ function createSceneClass() {
       var f = this.fish;
       f.prog = Math.min(1, f.prog + f.reel.gain);
       f.kick = 1; f.pulls++;
+      Snd.play('reel', f.prog);
       if (f.pulls % 3 === 0) this.splash(f.bx, f.by);
       if (f.prog >= 1) this.landFish();
     }
@@ -2791,6 +3177,7 @@ function createSceneClass() {
       var f = this.fish;
       f.state = 'cooldown'; f.t = 0; f.def = null; f.caught = false;
       this.hideFishing();
+      Snd.play('lose');
       this.splash(f.bx, f.by);
       UI.toast('<div>' + (msg || 'Ikan lepas! Kamu terlambat menarik.') + '</div>', '#ff7b7b', false, 1900);
     }
@@ -2811,6 +3198,7 @@ function createSceneClass() {
       f.state = 'cooldown'; f.t = 0; f.def = null; f.caught = true;
       this.hideFishing();
       this.splash(bx, by);
+      Snd.play('catch', rarityIdx(def.rarity), !!mut, isJumbo);
 
       // ikan melompat dari air ke pemain
       var jump = this.add.image(bx, by, 'fish_' + def.id).setScale(fishScale(kg)).setDepth(9600);
@@ -2833,6 +3221,7 @@ function createSceneClass() {
         rc, def.rarity === 'legendary' || def.rarity === 'epic', def.rarity === 'legendary' ? 4000 : 2800);
       if (lvUp.up) {                                   // pesan naik level muncul setelah pesan ikan selesai
         setTimeout(function () {
+          Snd.play('levelup');
           UI.toast('<div>NAIK TINGKAT! Tingkat ' + lvUp.level + '<small>' + rankTitle(lvUp.level) + ' - hadiah +' + fmt(lvUp.coins) + ' Koin</small><small>+' + lvUp.gained + ' Poin Keahlian (tekan K)</small></div>', '#ffd54a', true, 3400);
         }, def.rarity === 'legendary' ? 4100 : 2900);
       }
@@ -2866,7 +3255,7 @@ function createSceneClass() {
         if (this.canStand(this.gx + dgx, this.gy)) this.gx += dgx;
         if (this.canStand(this.gx, this.gy + dgy)) this.gy += dgy;
         walking = Math.abs(this.gx - ox) + Math.abs(this.gy - oy) > 1e-5;
-        if (walking) this.stride += spd * dt / (wantRun ? RUN_CYCLE : WALK_CYCLE);   // langkah mengikuti jarak tempuh => tidak meluncur
+        if (walking) { this.stride += spd * dt / (wantRun ? RUN_CYCLE : WALK_CYCLE); var sIx = Math.floor(this.stride * 2); if (sIx !== this.lastStep) { this.lastStep = sIx; var tt0 = this.typeAt(this.gx, this.gy); Snd.play('step', tt0 === DOCK ? 'wood' : (tt0 === GRASS ? 'grass' : 'sand'), wantRun); } }   // langkah mengikuti jarak tempuh => tidak meluncur
       }
 
       // pilih animasi: idle / walk / run / fish / cast / pull / catch
@@ -2893,6 +3282,7 @@ function createSceneClass() {
 
       this.updateFishing(time, paused ? 0 : dt);
       this.updateHud();
+      this.updateEnv(time, dt);
     }
 
     updateFishing(time, dt) {
@@ -3017,6 +3407,7 @@ function start() {
   initJoystick();
   initKeyboard();
   initButtons();
+  updateSoundBtn();
   resetJoy();
   UI.setCoins(false); UI.setBag(); UI.setLevel(false); UI.setZoomBtns();
   Hotbar.build(); Hotbar.render();
@@ -3040,6 +3431,7 @@ function start() {
 }
 
 window.__TF = {
+  gameClock: gameClock, lightAt: lightAt, weatherAt: weatherAt, weatherMut: weatherMut, WEATHERS: WEATHERS, Snd: Snd, fishState: fishState,
   rarityChances: rarityChances, mutChance: mutChance, jumboChance: jumboChance, FCA: FCA, skillLevel: skillLevel, rollCatch: rollCatch, BAITS: BAITS, buyBait: buyBait, cycleBait: cycleBait, setBait: setBait, activeBait: activeBait, maxRarity: maxRarity, MUTS: MUTS, renderSkills: renderSkills,
   Save: Save, levelInfo: levelInfo, skillPoints: skillPoints, buySkill: buySkill, buyRod: buyRod, equipRod: equipRod, totalLuck: totalLuck, slotPrice: slotPrice, renderShop: renderShop, setShopTab: function (t) { shopTab = t; }, RODS: RODS, SKILLS: SKILLS,
   buildMap: buildMap, makeIsland: makeIsland, makePlayerSheet: makePlayerSheet, makeNpcSheet: makeNpcSheet,
